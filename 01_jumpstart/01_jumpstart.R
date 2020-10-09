@@ -68,11 +68,61 @@ optins_day_prepared_tbl %>%
 
 # 2.0 EVALUATION PERIOD ----
 
+# * Filtering ----
+evaluation_tbl <- optins_day_prepared_tbl %>%
+    filter_by_time(
+        .date_var     = optin_time
+        , .start_date = '2018-11-20'
+        , .end_date   = "end"
+    )
 
+evaluation_tbl %>%
+    plot_time_series(
+        .date_var = optin_time
+        , .value = optins
+    )
 
+# * Train/Test ----
+
+splits <- evaluation_tbl %>%
+    time_series_split(
+        .date_var = optin_time
+        , assess = "8 week"
+        , cumulative = TRUE
+    )
+
+splits %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(
+        .date_var = optin_time
+        , .value = optins
+    )
 
 
 # 3.0 PROPHET FORECASTING ----
+
+# * Prophet Model using Modeltime/Parsnip ----
+model_prophet_fit <- prophet_reg() %>%
+    set_engine(engine = "prophet") %>%
+    fit(optins ~ optin_time, data = training(splits))
+
+# * Modeltime Process ----
+model_tbl <- modeltime_table(
+    model_prophet_fit
+)
+
+# * Calibration ----
+calibration_tbl <- model_tbl %>%
+    modeltime_calibrate(new_data = testing(splits))
+
+# * Visualize Forecast on Test Data ----
+calibration_tbl %>%
+    modeltime_forecast(actual_data = evaluation_tbl) %>%
+    plot_modeltime_forecast()
+
+# * Get Accuracy Metrics ----
+calibration_tbl %>%
+    modeltime_accuracy()
 
 
 

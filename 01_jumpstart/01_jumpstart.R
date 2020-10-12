@@ -124,14 +124,63 @@ calibration_tbl %>%
 calibration_tbl %>%
     modeltime_accuracy()
 
-
-
-
 # 4.0 FORECASTING WITH FEATURE ENGINEERING ----
 
+# * Identifying Possible Features ----
+
+evaluation_tbl %>%
+    plot_seasonal_diagnostics(
+        .date_var = optin_time
+        , .value  = log(optins)
+    )
+
+# * Recipes Spec ----
+training(splits)
+
+recipe_spec <- recipe(optins ~ ., data = training(splits)) %>%
+    
+    # TS Signature
+    step_timeseries_signature(optin_time) %>%
+    
+    step_rm(ends_with(".iso")) %>%
+    step_rm(ends_with("xts")) %>%
+    step_rm(contains("hour"), contains("minute"), contains("second"), contains("am.pm")) %>%
+    
+    step_normalize(ends_with("index.num"), ends_with("_year")) %>%
+    step_dummy(all_nominal())
+
+recipe_spec %>%
+    prep() %>%
+    juice() %>%
+    glimpse()
 
 
+# * ML Specs ----
 
+model_spec <- linear_reg() %>%
+    set_engine("lm")
+
+workflow_fit_lm <- workflow() %>%
+    add_model(model_spec) %>%
+    add_recipe(recipe_spec) %>%
+    fit(training(splits))
+
+# * Modeltime Process ----
+calibration_tbl <- modeltime_table(
+    model_prophet_fit
+    , workflow_fit_lm
+) %>%
+    modeltime_calibrate(testing(splits))
+
+calibration_tbl %>%
+    modeltime_accuracy()
+
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits)
+        , actual_data = evaluation_tbl
+    ) %>%
+    plot_modeltime_forecast()
 
 # 5.0 SUMMARY & NEXT STEPS ----
 

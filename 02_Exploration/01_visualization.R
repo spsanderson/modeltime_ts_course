@@ -145,24 +145,49 @@ subscribers_day_tbl %>%
 
 # * ACF / PACF -----
 # - Date Features & Fourier Series 
+subscribers_day_tbl %>%
+    plot_acf_diagnostics(.date_var = optin_time, .value = log(optins + 1))
 
+subscribers_day_tbl %>%
+    plot_acf_diagnostics(.date_var = optin_time, .value = log(optins + 1), .lags = 100)
 
 
 # * CCF ----
 # - Lagged External Regressors
 
+google_analytics_day_tbl <- google_analytics_long_hour_tbl %>%
+    pivot_wider(names_from = name, values_from = value) %>%
+    summarise_by_time(.date_var = date, .by = "day", across(pageViews:sessions, .fns = sum))
 
+subscribers_ga_day_tbl <- subscribers_day_tbl %>%
+    left_join(google_analytics_day_tbl, by = c("optin_time" = "date"))
 
-
-
+subscribers_ga_day_tbl %>%
+    drop_na() %>%
+    plot_acf_diagnostics(
+        .date_var = optin_time
+        , .value = optins
+        , .ccf_vars = pageViews:sessions
+        , .show_ccf_vars_only = TRUE
+        , .facet_ncol = 3
+        )
 
 # 3.0 SEASONALITY ----
 # - Detecting Time-Based Features
 
 ?plot_seasonal_diagnostics
 
+google_analytics_long_hour_tbl %>%
+    group_by(name) %>%
+    plot_seasonal_diagnostics(.date_var = date, .value = log(value + 1))
 
-
+google_analytics_long_hour_tbl %>%
+    group_by(name) %>%
+    plot_seasonal_diagnostics(
+        .date_var = date
+        , .value = log(value + 1)
+        , .feature_set = "hour"
+        )
 
 
 # 4.0 ANOMALIES ----

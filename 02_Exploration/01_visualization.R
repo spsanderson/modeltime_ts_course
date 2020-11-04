@@ -195,7 +195,27 @@ google_analytics_long_hour_tbl %>%
 
 ?plot_anomaly_diagnostics
 
+subscribers_day_tbl %>%
+    plot_anomaly_diagnostics(
+        .date_var = optin_time
+        , .value = optins
+        , .alpha = 0.01
+        , .max_anomalies = 0.01
+    )
 
+subscribers_day_tbl %>%
+    tk_anomaly_diagnostics(
+        .date_var = optin_time
+        , .value = optins
+    )
+
+# Grouped Anomalies
+google_analytics_long_hour_tbl %>%
+    group_by(name) %>%
+    plot_anomaly_diagnostics(
+        .date_var = date
+        , .value = value
+    )
 
 
 
@@ -204,6 +224,18 @@ google_analytics_long_hour_tbl %>%
 
 ?plot_stl_diagnostics
 
+subscribers_day_tbl %>%
+    plot_stl_diagnostics(
+        .date_var = optin_time
+        , .value = optins
+    )
+
+google_analytics_long_hour_tbl %>%
+    group_by(name) %>%
+    plot_stl_diagnostics(
+        .date_var = date
+        , .value = log(value + 1)
+    )
 
 
 
@@ -213,6 +245,22 @@ google_analytics_long_hour_tbl %>%
 
 ?plot_time_series_regression
 
+subscribers_day_tbl %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = log(optins + 1) ~ as.numeric(optin_time)
+            + wday(optin_time, label = TRUE)
+            + month(optin_time, label = TRUE)
+        , .show_summary = TRUE
+    )
 
-
+google_analytics_long_hour_tbl %>%
+    group_by(name) %>%
+    plot_time_series_regression(
+        .date_var = date
+        , .formula = log(value + 1) ~ as.numeric(date)
+        + as.factor(hour(date))
+        + wday(date, label = TRUE)
+        + month(date, label = TRUE)
+    )
 

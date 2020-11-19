@@ -128,12 +128,24 @@ transactions_tbl %>%
 # - Going from Low to High Frequency (un-aggregating)
 
 # * Fill Daily Gaps ----
-
+subscribers_daily_tbl %>%
+    pad_by_time(
+        .date_var = optin_time
+        , .by = "day"
+        , .pad_value = 0
+    )
 
 
 
 # * Weekly to Daily ----
-
+transactions_tbl %>%
+    pad_by_time(
+        .date_var = purchased_at
+        , .by = "day"
+        , .start_date = "2018-06"
+        , .pad_value = 
+    ) %>%
+    mutate_by_time(.by = "week", revenue = sum(revenue / 7, na.rm = TRUE))
 
 
 
@@ -142,19 +154,61 @@ transactions_tbl %>%
 # - Pare data down before modeling
 
 # * Slicing - Everything after the BIG anomaly ----
-
+subscribers_daily_tbl %>%
+    filter_by_time(
+        .date_var = optin_time
+        , .start_date = "2018-11-20"
+    ) %>%
+    plot_time_series(
+        .date_var = optin_time
+        , .value = optins
+    )
 
 # * Zooming In - Just December 2018 ----
+subscribers_daily_tbl %>%
+    filter_by_time(
+        .date_var = optin_time
+        , .start_date = "2019-12"
+        , .end_date = "2019-12"
+    ) %>%
+    plot_time_series(
+        .date_var = optin_time
+        , .value = optins
+    )
 
 
 # * Offsetting - Using plus-time and minus-time offsets to get things just right ----
-
+subscribers_daily_tbl %>%
+    filter_by_time(
+        .date_var = optin_time
+        , .start_date = "2019-12"
+        , .end_date = "2019-12-01" %+time% "8 weeks"
+    ) %>%
+    plot_time_series(
+        .date_var = optin_time
+        , .value = optins
+    )
 
 # 4.0 MUTATING BY TIME -----
 # - Get change from beginning/end of period
 
 # * First, Last, Mean, Median by Period ----
-
+transactions_tbl %>%
+    mutate_by_time(
+        .date_var = purchased_at
+        , .by = "3 month"
+        , revenue_mean = round(mean(revenue, na.rm = TRUE))
+        , revenue_median = median(revenue)
+        , revenue_max = max(revenue)
+        , revenue_min = min(revenue)
+    ) %>%
+    pivot_longer(cols = contains("revenue")) %>%
+    plot_time_series(
+        .date_var = purchased_at
+        , .value = value
+        , .color_var = name
+        , .smooth = FALSE
+    )
 
 
 

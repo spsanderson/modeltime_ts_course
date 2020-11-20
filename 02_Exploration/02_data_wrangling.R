@@ -218,30 +218,84 @@ transactions_tbl %>%
 # - Identify External Regressors
 
 # * Subscribers + GA Summary Web Traffic ----
+subscribers_daily_padded_tbl <- subscribers_daily_tbl %>%
+    pad_by_time(.date_var = optin_time, .pad_value = 0, .start_date = "2018-06")
 
+subscribers_google_joined_daily_tbl <- subscribers_daily_padded_tbl %>%
+    left_join(google_analytcs_summary_daily_tbl,
+              by = c("optin_time" = "dateHour"))
 
 # * Inspect Join -----
+subscribers_google_joined_daily_tbl %>% plot_missing()
 
+google_analytcs_summary_daily_tbl %>% tk_summary_diagnostics()
+
+subscribers_google_joined_daily_tbl %>% tk_summary_diagnostics()
+
+subscribers_google_joined_daily_tbl %>%
+    pivot_longer(-optin_time) %>%
+    plot_time_series(.date_var = optin_time, .value = value, .color_var = name)
 
 # * Visualization Techniques (Relationships) ----
+log_standardized_subscribers_google_joined_tbl <- subscribers_google_joined_daily_tbl %>%
+    drop_na() %>%
+    mutate(across(.cols = optins:sessions, .fns = log1p)) %>%
+    mutate(across(.cols = optins:sessions, .fns = standardize_vec))
+    
+log_standardized_subscribers_google_joined_tbl %>%
+    pivot_longer(-optin_time) %>%
+    plot_time_series(
+        .date_var = optin_time
+        , .value = value
+        , .color_var = name
+        , .smooth = FALSE
+        )
 
-
-
+log_standardized_subscribers_google_joined_tbl %>%
+    plot_acf_diagnostics(
+        .date_var = optin_time
+        , .value = optins
+        , .ccf_vars = pageViews:sessions
+        , .show_ccf_vars_only = TRUE
+    )
 
 # 6.0 WORKING WITH THE INDEX ----
 # - Index Manipulations
+subscribers_daily_padded_tbl %>%
+    tk_index()
 
 # * Making an index ----
-
+tibble(
+    date = tk_make_timeseries("2011",length_out = 100, by = "month")
+    ,values = 1:100
+)
 
 # * Holiday Sequence ----
+tk_make_holiday_sequence(
+    start_date = "2011"
+    , end_date = "2021"
+    , calendar = "NYSE"
+) %>%
+    tk_get_holiday_signature() %>%
+    glimpse()
 
+tk_make_timeseries("2011") %>%
+    tk_get_holiday_signature()
 
 # * Offsetting time ----
+"2011-01-01" %+time% "1 day"
+"2011-01-01" %-time% "1 day"
+"2011-01-01" %+time% "1 month"
+"2011-01-01" %+time% "1 year"
 
+tk_make_timeseries("2011") %+time% "1 year"
 
 # * Extending an index ----
+tk_make_timeseries("2011-01") %>%
+    tk_make_future_timeseries(length_out = "1 month")
 
+tk_make_timeseries("2011", by = "quarter") %>%
+    tk_make_future_timeseries(length_out = 4)
 
 
 

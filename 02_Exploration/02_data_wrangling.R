@@ -301,18 +301,54 @@ tk_make_timeseries("2011", by = "quarter") %>%
 
 # 7.0 FUTURE FRAME ----
 # - Forecasting helper
-
+google_analytcs_summary_daily_tbl %>%
+    plot_time_series(
+        .date_var = dateHour
+        , .value = pageViews
+    )
 
 
 # * Future Frame ----
-
+google_analytcs_summary_daily_tbl %>%
+    future_frame(
+        .date_var = dateHour
+        , .length_out = "2 months"
+    )
 
 
 # * Modeling ----
+model_fit_lm <- lm(
+    pageViews ~ as.numeric(dateHour) 
+    + wday(dateHour, label = TRUE)
+    + month(dateHour)
+    , data = google_analytcs_summary_daily_tbl
+    )
 
+future_tbl <- google_analytcs_summary_daily_tbl %>%
+    future_frame(
+        .date_var = dateHour
+        , .length_out = "2 months"
+    )
 
+predictions_vec <- predict(model_fit_lm, newdata = future_tbl) %>%
+    as.vector()
 
 # * Visualizing ----
-
+google_analytcs_summary_daily_tbl %>%
+    select(dateHour, pageViews) %>%
+    add_column(type = "actual") %>%
+    bind_rows(
+        future_tbl %>%
+            mutate(
+                pageViews = predictions_vec
+                , type = "forecast"
+            )
+    ) %>%
+    plot_time_series(
+        .date_var = dateHour
+        , .value = pageViews
+        , .color_var = type
+        , .smooth = FALSE
+    )
 
 

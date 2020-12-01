@@ -54,21 +54,48 @@ subscribers_daily_tbl <- mailchimp_users_tbl %>%
 
 # No transformation
 
+subscribers_daily_tbl %>%
+    plot_time_series(.date_var = optin_time, .value = optins)
+
+subscribers_daily_tbl %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = optins ~ as.numeric(optin_time) +
+            wday(optin_time, label = TRUE) +
+            month(optin_time, label = TRUE)
+        , .show_summary = TRUE
+    )
 
 # Log - Show Error 
 
+subscribers_daily_tbl %>%
+    plot_time_series(.date_var = optin_time, .value = log(optins))
 
 # Log Plus 1
-
+subscribers_daily_tbl %>%
+    plot_time_series(.date_var = optin_time, .value = log1p(optins))
 
 # Inversion
+subscribers_daily_tbl %>%
+    plot_time_series(.date_var = optin_time, .value = log1p(optins) %>% expm1())
 
+# Benefit
+subscribers_daily_tbl %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = log1p(optins) ~ as.numeric(optin_time) +
+            wday(optin_time, label = TRUE) +
+            month(optin_time, label = TRUE)
+        , .show_summary = TRUE
+    )
 
 # Google Analytics (Groups)
-
+google_analytics_summary_long_tbl %>%
+    plot_time_series(.date_var = date, .value = log1p(value), .color_var = name)
 
 # Inversion
-
+google_analytics_summary_long_tbl %>%
+    plot_time_series(.date_var = date, .value = log1p(value) %>% expm1(), .color_var = name)
 
 
 # * Box Cox ----
@@ -76,16 +103,50 @@ subscribers_daily_tbl <- mailchimp_users_tbl %>%
 # ** Subscribers (Single)
 
 # Box Cox Vec
+subscribers_daily_tbl %>%
+    plot_time_series(optin_time, box_cox_vec(optins + 1, lambda = "auto"))
 
-
+subscribers_daily_tbl %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = box_cox_vec(optins + 1) ~ as.numeric(optin_time) +
+            wday(optin_time, label = TRUE) +
+            month(optin_time, label = TRUE)
+        )
 
 # Box Cox Inversion
-
+subscribers_daily_tbl %>%
+    plot_time_series(
+        .date_var = optin_time
+        , .value = box_cox_vec(optins + 1, lambda = -0.1895) %>%
+            box_cox_inv_vec(lambda = -0.1895)
+    )
 
 
 # ** Google Analytics (Groups)
+google_analytics_summary_long_tbl %>%
+    plot_time_series(
+        .date_var = date
+        , .value = box_cox_vec(value)
+    )
 
-
+google_analytics_summary_long_tbl %>%
+    mutate(value_trans = box_cox_vec(value)) %>%
+    group_split() %>%
+    map2(.y = 1:3, .f = function(df, idx) {
+        if(idx == 1) lambda <- 0.441313194936969
+        if(idx == 2) lambda <- -0.0023793550944814
+        if(idx == 3) lambda <- -0.116626712183629
+        
+        df %>%
+            mutate(value_trans_inv = box_cox_inv_vec(x = value_trans, lambda = lambda))
+    }) %>%
+    bind_rows() %>%
+    group_by(name) %>%
+    plot_time_series(
+        .date_var = date
+        , .value = value_trans_inv
+    )
 
 
 # 2.0 ROLLING & SMOOTHING ----

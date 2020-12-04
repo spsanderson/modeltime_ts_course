@@ -157,22 +157,91 @@ google_analytics_summary_long_tbl %>%
 #   - A rolling average forecast is usually sub-optimal (good opportunity for you!)
 
 # * Sliding / Rolling Functions ----
-
+google_analytics_summary_long_tbl %>%
+    mutate(value_roll = slidify_vec(
+        .x = value
+        , .f = mean
+        , .period = 24 * 7
+        , .align = "center"
+        , .partial = FALSE
+    )) %>%
+    pivot_longer(contains("value"), names_repair = "unique") %>%
+    rename(names = `name...2`, names_2 = `name...3`) %>%
+    group_by(names) %>%
+    plot_time_series(
+        .date_var = date
+        , .value = value
+        , .color_var = names_2
+        , .smooth = FALSE
+    )
 
 
 # * LOESS smoother ----
-
+google_analytics_summary_long_tbl %>%
+    mutate(value_smooth = smooth_vec(x = value, period = 24 * 7)) %>%
+    pivot_longer(contains("value"), names_repair = "unique") %>%
+    rename(names = `name...2`, names_2 = `name...3`) %>%
+    group_by(names) %>%
+    plot_time_series(
+        .date_var = date
+        , .value = value
+        , .color_var = names_2
+        , .smooth = FALSE
+    )
 
 
 # * Rolling Correlations ----
 # - Identify changing relationships
+rolling_cor_24_7 <- slidify(
+    .f = ~ cor(.x, .y, use = "pairwise.complete.obs")
+    , .period  = 24 * 7
+    , .align   = "right"
+    , .partial = FALSE
+)
 
+google_analytics_summary_tbl %>%
+    mutate(rolling_cor_pageviews_organic = rolling_cor_24_7(pageViews, organicSearches)) %>%
+    mutate(dateHour = ymd_h(dateHour)) %>%
+    plot_time_series(
+        .date_var = dateHour
+        , .value = rolling_cor_pageviews_organic
+    )
+    
+rolling_cor_24_7_b <- slidify(
+    .f = ~ cor(.x, .y, use = "pairwise.complete.obs")
+    , .period = 24 * 7
+    , .align = "center"
+    , .partial = FALSE
+)
 
-
+google_analytics_summary_tbl %>%
+    mutate(rolling_cor_pageview_organic = rolling_cor_24_7_b(pageViews, organicSearches)) %>%
+    mutate(dateHour = ymd_h(dateHour)) %>%
+    select(-sessions) %>%
+    pivot_longer(-dateHour) %>%
+    group_by(name) %>%
+    plot_time_series(.date_var = dateHour, .value = value)
 
 # * Problem with Moving Avg Forecasting ----
-
-
+transactions_tbl %>%
+    mutate(mavg_8wks = slidify_vec(
+        .x = revenue
+        , .f = ~ mean(.x, na.rm = TRUE)
+        , .period = 8
+        , .align = "right"
+        )
+    ) %>%
+    bind_rows(
+        future_frame(., .length_out = 8)
+    ) %>%
+    fill(mavg_8wks, .direction = "down") %>%
+    pivot_longer(-purchased_at) %>%
+    plot_time_series(
+        .date_var = purchased_at
+        , .value = value
+        , .color_var = name
+        , .smooth = FALSE
+    )
 
 
 

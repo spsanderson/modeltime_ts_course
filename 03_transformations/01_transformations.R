@@ -251,12 +251,26 @@ transactions_tbl %>%
 
 # * Normalize to Range (0,1) ----
 # - INFO: recipes::step_range() is actually normalization to range(0,1)
-
+google_analytics_summary_long_tbl %>%
+    mutate(value = normalize_vec(value)) %>%
+    ungroup() %>%
+    plot_time_series(
+        .date_var = date
+        , .value = value
+        , .color_var = name
+    ) 
 
 
 # * Standardize to Mean = 0 (Center), SD = 1 (Scaling) -----
 # - INFO: recipes::step_normalize() is actually standardization to mean = 0, sd = 1
-
+google_analytics_summary_long_tbl %>%
+    mutate(value = standardize_vec(value)) %>%
+    ungroup() %>%
+    plot_time_series(
+        .date_var = date
+        , .value = value
+        , .color_var = name
+    )
 
 
 
@@ -267,14 +281,58 @@ transactions_tbl %>%
 # - usually there is a reason for large values
 
 # * Imputation ----
-
+subscribers_daily_tbl %>%
+    mutate(optins_na = ifelse(optins == 0, NA_real_, optins)) %>%
+    mutate(optins_imputed = ts_impute_vec(optins_na, period = 7)) %>%
+    pivot_longer(-optin_time) %>%
+    plot_time_series(
+        .date_var = optin_time
+        , .value = log1p(value)
+        , .color_var = name
+        , .smooth = FALSE
+    )
 
 # * Cleaning (Imputation + Outlier Removal) ----
-
+subscribers_daily_tbl %>%
+    mutate(optins_na = ifelse(optins == 0, NA_real_, optins)) %>%
+    mutate(optins_clean = ts_clean_vec(optins_na, period = 7)) %>%
+    pivot_longer(-optin_time) %>%
+    # plot_anomaly_diagnostics(
+    #     .date_var = optin_time
+    #     , .value = value
+    # )
+    plot_time_series(
+        .date_var = optin_time
+        , .value = value
+        , .color_var = name
+        , .smooth = FALSE
+    )
 
 
 # Outlier Effect - Before Cleaning
+subscribers_cleaned_daily_tbl <- subscribers_daily_tbl %>%
+    mutate(optins_na = ifelse(optins == 0, NA_real_, optins)) %>%
+    mutate(optins_clean = ts_clean_vec(optins_na, period = 7))
 
+# We can invert the following with exp1
+subscribers_cleaned_daily_tbl %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = log1p(optins) ~ as.numeric(optin_time) +
+            wday(optin_time, label = TRUE) +
+            month(optin_time, label = TRUE)
+        , .show_summary = TRUE
+    )
+
+# we cannot invert this data
+subscribers_cleaned_daily_tbl %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = optins_clean ~ as.numeric(optin_time) +
+            wday(optin_time, label = TRUE) +
+            month(optin_time, label = TRUE)
+        , .show_summary = TRUE
+    )
 
 
 # Outlier Effect - After Cleaning

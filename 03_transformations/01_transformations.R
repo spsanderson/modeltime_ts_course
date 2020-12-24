@@ -349,8 +349,31 @@ subscribers_cleaned_daily_tbl %>%
 # - Often used for feature engineering
 # - Autocorrelation
 # - 
+subscribers_daily_tbl %>%
+    mutate(optins_lag_1 = lag_vec(optins, lag = 1)) %>%
+    mutate(optins_lag_2 = lag_vec(optins, lag = 2))
 
+subscribers_daily_tbl %>%
+    plot_acf_diagnostics(
+        .date_var = optin_time
+        , .value = log1p(optins)
+    )
 
+subscribers_daily_tbl %>%
+    tk_augment_lags(
+        .value = optins
+        , .lags = c(1,2,6,14)
+    ) %>%
+    drop_na() %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = log1p(optins) ~ as.numeric(optin_time) +
+            log1p(optins_lag1) +
+            log1p(optins_lag2) +
+            log1p(optins_lag6) +
+            log1p(optins_lag14)
+        , .show_summary = TRUE
+    )
 
 # * Differencing ----
 # - Makes a series "stationary"
@@ -360,15 +383,34 @@ subscribers_cleaned_daily_tbl %>%
 #   - Total subs to change by day
 
 # Cumulative Sum & Differencing
+subscribers_daily_tbl %>%
+    mutate(total_optins = cumsum(optins)) %>%
+    mutate(optins_diff_1 = diff_vec(total_optins, lag = 1)) %>% # Instantaneous Velocity
+    mutate(optins_diff_2 = diff_vec(total_optins, lag = 1, difference = 2)) %>% # Acceleration
+    pivot_longer(-optin_time) %>%
+    group_by(name) %>%
+    plot_time_series(optin_time, value, .color_var = name, .smooth = FALSE)
 
-
+subscribers_daily_tbl %>%
+    mutate(total_optins = cumsum(optins)) %>%
+    mutate(optins_diff_1 = diff_vec(total_optins, lag = 1)) %>% # Instantaneous Velocity
+    mutate(optins_diff_2 = diff_vec(total_optins, lag = 1, difference = 2)) %>% # Acceleration
+    pivot_longer(-optin_time) %>%
+    group_by(name) %>%
+    plot_time_series(optin_time, log1p(value), .color_var = name, .smooth = FALSE)
 
 # Comparing Differences 
+google_analytics_summary_diff_tbl <-  google_analytics_summary_tbl %>%
+    mutate(across(pageViews:sessions, .fns = diff_vec))
 
-
+google_analytics_summary_diff_tbl %>%
+    mutate(dateHour = ymd_h(dateHour)) %>%
+    pivot_longer(-dateHour) %>%
+    plot_time_series(dateHour, value, name, .smooth = FALSE)
 
 # Inversion 
-
+google_analytics_summary_diff_tbl %>%
+    mutate(pageViews = diff_inv_vec(pageViews, initial_values = 79))
 
 
 
@@ -377,10 +419,28 @@ subscribers_cleaned_daily_tbl %>%
 # - BENEFIT: Don't need a lag, just need a frequency (based on your time index)
 
 # * Vector (Single Fourier) ----
+subscribers_daily_tbl %>%
+    mutate(sin14_k1 = fourier_vec(optin_time, period = 14, K = 1, type = "sin")) %>%
+    mutate(cos14_k2 = fourier_vec(optin_time, period = 14, K = 1, type = "cos")) %>%
+    select(-optins) %>%
+    pivot_longer(matches("(cos)|(sin)")) %>%
+    plot_time_series(
+        optin_time
+        , value
+        , name
+        , .smooth = FALSE
+    )
 
 
 # * Augmenting (Multiple Fourier Series) ----
-
+subscribers_daily_tbl %>%
+    tk_augment_fourier(optin_time, .periods = c(14,30,90,365), .K = 2) %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = log1p(optins) ~ as.numeric(optin_time) +
+            . - optin_time
+        , .show_summary = TRUE
+    )
 
 
 

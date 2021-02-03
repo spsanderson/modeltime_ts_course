@@ -1,0 +1,224 @@
+---
+title: "Challenge 01: Exploring Revenue vs Page Sessions"
+subtitle: "DS4B 203-R, Time Series Forecasting for Business"
+author: "Business Science"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = TRUE,
+    message = F,
+    warning = F,
+    # This should allow Rmarkdown to locate the data
+    root.dir = rprojroot::find_rstudio_root_file()
+)
+```
+
+# Challenge Objective
+
+Your goal is to forecast revenue, and you'd like to understand if their are relationships between Revenue trends / spikes and webpage traffic (do spikes in revenue relate to traffic being driven to specific pages?).
+
+# Libraries
+
+```{r}
+library(tidyverse)
+library(timetk)
+library(lubridate)
+library(DataExplorer)
+```
+
+
+# Data
+
+Read in the following data sets. 
+
+## Transactions Revenue
+
+```{r}
+transactions_tbl  <- read_rds("../00_data/transactions_weekly.rds")
+transactions_tbl
+```
+
+
+## Google Analytics by Page
+
+```{r}
+google_analytics_by_page_tbl <- read_rds("../00_data/google_analytics_by_page_daily.rds")
+google_analytics_by_page_tbl
+```
+
+# Visualize the Data
+
+- Look for Missing Data
+- Determine the Frequency of each Dataset
+
+## Transactions
+
+- Start with `transactions_tbl`
+- Use `plot_time_series()` to visualize purchased at vs revenue
+- Answer the question: What is the time frequency?
+
+```{r}
+transactions_tbl %>%
+    plot_time_series(purchased_at, revenue)
+```
+
+
+## Sessions by Page 
+
+There are 20 pages x 3 Metrics (pageViews, organicSearch, and sessions). To make it easier to visualize, do this:
+
+1. Start with `google_analytics_by_page_tbl`
+2. Group by "pagePath" - These are the pages that are being visited
+3. Visualize just the "sessions" - This will cut down the data
+4. Use `plot_time_series()` with `.interactive = FALSE` and `.facet_ncol = 4` (this helps to visualize all of the facets)
+
+```{r, fig.height=7}
+google_analytics_by_page_tbl %>%
+    group_by(pagePath) %>%
+    plot_time_series(date, sessions, .facet_ncol = 4, .interactive = FALSE)
+```
+
+# Aggregation to Common Frequency
+
+We need to aggregate both data sets to get them on a common frequency before we can join them
+
+## Aggregate Transactions to Weekly
+
+1. Start with `transactions_tbl`
+2. Use `summarise_by_time()` with `.by = "week"`, and `sum()` the revenue.
+3. Save as a new variable called `transactions_weekly_tbl`
+
+```{r}
+transactions_weekly_tbl <- transactions_tbl %>%
+    summarise_by_time(.by = "week", revenue = sum(revenue))
+
+transactions_weekly_tbl
+```
+## Aggregate GA Page Sessions to Weekly
+
+1. Start with `google_analytics_by_page_tbl`
+2. Select just the "date", "pagePath" and "sessions" columns.
+3. Group by "pagePath"
+4. Use `summarise_by_time()` with `.by = "week"`, and `sum()` the sessions.
+5. Use `pivot_wider()` to pivot the names from "pagePath" and values from "sessions" to a wide data. Use `names_prefix = "sessions_"` to identify the new columns as coming from sessions. 
+6. Select "date" and any columns that `contains("/p/")` (these are product pages)
+7. Store the wrangled data as `product_page_sessions_weekly_tbl`
+
+```{r}
+product_page_sessions_weekly_tbl <- google_analytics_by_page_tbl %>%
+    select(date, pagePath, sessions) %>%
+    group_by(pagePath) %>%
+    summarise_by_time(.by = "week", sessions = sum(sessions)) %>%
+    pivot_wider(names_from = pagePath, values_from = sessions, names_prefix = "sessions_") %>%
+    select(date, contains("/p/"))
+
+product_page_sessions_weekly_tbl
+```
+
+# Join the Datasets
+
+## Left Join
+
+- Use `left_join()` to join `transactions_weekly_tbl` and `product_page_sessions_weekly_tbl`
+- Store the joined data as `transactions_product_page_sessions_weekly_tbl`
+
+```{r}
+transactions_product_page_sessions_weekly_tbl <- transactions_weekly_tbl %>%
+    left_join(product_page_sessions_weekly_tbl, by = c("purchased_at" = "date"))
+
+transactions_product_page_sessions_weekly_tbl %>% glimpse()
+```
+
+## Inspect Missing
+
+- Use `plot_missing()` to inspect the missing data in `transactions_product_page_sessions_weekly_tbl`
+
+```{r}
+transactions_product_page_sessions_weekly_tbl %>% plot_missing()
+```
+
+# Identify Relationships
+
+```{r}
+# Load Checkpoint Data
+transactions_product_page_sessions_weekly_tbl <- 
+    read_rds("challenge_01_data_checkpoints/transactions_product_page_sessions_weekly_tbl.rds")
+```
+
+
+## Visualize the Joined Data
+
+1. Start with `transactions_product_page_sessions_weekly_tbl`
+2. `pivot_longer()` everything except "purchased_at" to form the data for plotting. This creates 2 columns, "name" and "value".
+3. Group by "name"
+3. Use `plot_time_series()` to visualize "purchased_at" vs "value". Use `.facet_ncol = 3
+
+```{r}
+transactions_product_page_sessions_weekly_tbl %>%
+    pivot_longer(-purchased_at) %>%
+    group_by(name) %>%
+    plot_time_series(purchased_at, value, .facet_ncol = 3)
+```
+
+## Remove Columns with Too Much Missing
+
+Several of the columns have a lot of missing data. These are pages that did not exist until recently in the data, and unfortunately we aren't going to be able to use them because they will result in data too few rows for the analysis. 
+
+1. Start with `transactions_product_page_sessions_weekly_tbl`
+2. __De-select__ columns containing "bundle" and anything that `ends_with()` "with-r/". These columns have very low data.
+3. Store the subset data as `transactions_product_page_subset_tbl`
+
+```{r}
+transactions_product_page_subset_tbl <- transactions_product_page_sessions_weekly_tbl %>%
+    select(-contains("bundle"), -ends_with("with-r/"))
+    
+transactions_product_page_subset_tbl
+```
+
+## Transform Data
+
+1. Remove missing data with `drop_na()`
+2. Apply cross-wise transformations using `mutate()` and `across()`:
+    - First take the Log Plus 1: `log1p()`
+    - Then standardize to mean 0, std-dev 1: `standardize_vec()`
+3. Store the transformed data as `log_standardized_transactions_product_page_tbl`
+    
+
+```{r}
+log_standardized_transactions_product_page_tbl <- transactions_product_page_subset_tbl %>%
+    drop_na() %>%
+    mutate(across(-purchased_at, .fns = log1p)) %>%
+    mutate(across(-purchased_at, .fns = standardize_vec)) 
+    
+log_standardized_transactions_product_page_tbl
+```
+
+## Cross Correlations
+
+Visualize cross correlations between revenue and anything that `contains("session")`:
+
+1. Start with `log_standardized_transactions_product_page_tbl`
+2. Use `plot_acf_diagnostics()` with:
+    - `.ccf_vars = contains("session")`
+    - `.show_ccf_vars_only = TRUE`
+    - `.facet_ncol = 2`
+
+
+```{r}
+log_standardized_transactions_product_page_tbl %>%
+    plot_acf_diagnostics(purchased_at, revenue, 
+                         .ccf_vars = contains("session"), 
+                         .show_ccf_vars_only = TRUE, 
+                         .facet_ncol = 2)
+```
+
+
+
+# Results
+
+- There appears to be a relationship between sessions of the 101 course page and revenue. A portion of traffic likely purchases the course that day. 
+- There appears to be a lagged relationship between views of Jumpstart and Learning Labs PRO and revenue. This could indicate an investigative process where students learn about the courses then make purchases later.  
+
+

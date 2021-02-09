@@ -99,7 +99,12 @@ We need to aggregate both data sets to get them on a common frequency before we 
 3. Save as a new variable called `transactions_weekly_tbl`
 
 ```{r}
-# CODE HERE
+transactions_weekly_tbl <- transactions_tbl %>%
+    summarise_by_time(
+        .date_var = purchased_at
+        , .by = "week"
+        , revenue = sum(revenue, na.rm  = TRUE)
+    )
 ```
 ## Aggregate GA Page Sessions to Weekly
 
@@ -112,7 +117,17 @@ We need to aggregate both data sets to get them on a common frequency before we 
 7. Store the wrangled data as `product_page_sessions_weekly_tbl`
 
 ```{r}
-# CODE HERE
+product_page_sessions_weekly_tbl <- google_analytics_by_page_tbl %>%
+    select(date, pagePath, sessions) %>%
+    group_by(pagePath) %>%
+    summarise_by_time(
+        .date_var = date
+        , .by = "week"
+        , sessions = sum(sessions, na.rm = TRUE)
+    ) %>%
+    ungroup() %>%
+    pivot_wider(names_from = pagePath, values_from = sessions, names_prefix = "sessions_") %>%
+    select(date, contains("/p/"))
 ```
 
 # Join the Datasets
@@ -123,7 +138,11 @@ We need to aggregate both data sets to get them on a common frequency before we 
 - Store the joined data as `transactions_product_page_sessions_weekly_tbl`
 
 ```{r}
-# CODE HERE
+transactions_product_page_sessions_weekly_tbl <- left_join(
+    x = transactions_weekly_tbl
+    , y = product_page_sessions_weekly_tbl
+    , by = c("purchased_at"="date")
+)
 ```
 
 ## Inspect Missing
@@ -131,7 +150,7 @@ We need to aggregate both data sets to get them on a common frequency before we 
 - Use `plot_missing()` to inspect the missing data in `transactions_product_page_sessions_weekly_tbl`
 
 ```{r}
-# CODE HERE
+plot_missing(transactions_product_page_sessions_weekly_tbl)
 ```
 
 # Identify Relationships

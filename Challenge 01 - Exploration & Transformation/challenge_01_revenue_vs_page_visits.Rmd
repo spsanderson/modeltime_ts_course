@@ -169,7 +169,10 @@ transactions_product_page_sessions_weekly_tbl <-
 3. Use `plot_time_series()` to visualize "purchased_at" vs "value". Use `.facet_ncol = 3
 
 ```{r}
-# CODE HERE
+transactions_product_page_sessions_weekly_tbl %>%
+    pivot_longer(cols = -purchased_at) %>%
+    group_by(name) %>%
+    plot_time_series(.date_var = purchased_at, .value = value, .facet_ncol = 3)
 ```
 
 ## Remove Columns with Too Much Missing
@@ -181,7 +184,8 @@ Several of the columns have a lot of missing data. These are pages that did not 
 3. Store the subset data as `transactions_product_page_subset_tbl`
 
 ```{r}
-# CODE HERE
+transactions_product_page_subset_tbl <- transactions_product_page_sessions_weekly_tbl %>%
+    select(-ends_with("with-r/"))
 ```
 
 ## Transform Data
@@ -194,7 +198,10 @@ Several of the columns have a lot of missing data. These are pages that did not 
     
 
 ```{r}
-# CODE HERE
+log_standardized_transactions_product_page_tbl <- transactions_product_page_subset_tbl %>%
+    drop_na() %>%
+    mutate(across(-purchased_at, .fns = log1p)) %>%
+    mutate(across(-purchased_at, .fns = standardize_vec))
 ```
 
 ## Cross Correlations
@@ -209,7 +216,12 @@ Visualize cross correlations between revenue and anything that `contains("sessio
 
 
 ```{r}
-# CODE HERE
+log_standardized_transactions_product_page_tbl %>%
+    plot_acf_diagnostics(.date_var = purchased_at
+                         , .value = revenue
+                         , .ccf_vars = contains("session")
+                         , .show_ccf_vars_only = TRUE
+                         , .facet_ncol = 2)
 ```
 
 

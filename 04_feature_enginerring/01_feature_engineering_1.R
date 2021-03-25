@@ -70,26 +70,85 @@ data_prepared_tbl %>%
 
 # * Time Series Signature ----
 
+data_prep_signature_tbl <- data_prepared_tbl %>%
+    tk_augment_timeseries_signature() %>%
+    select(-diff, -contains(".iso"), -contains(".xts"), 
+           -matches("(hour)|(minute)|(second)|(am.pm)"))
+
+data_prep_signature_tbl %>%
+    glimpse()
 
 # * Trend-Based Features ----
 
 # ** Linear Trend
 
+data_prep_signature_tbl %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = optins_trans ~ index.num
+    )
 
 # ** Nonlinear Trend - Basis Splines
 
+data_prep_signature_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = optins_trans ~ splines::bs(index.num, degree = 3)
+    )
+
+data_prep_signature_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = optins_trans ~ splines::ns(index.num, df = 3)
+    )
+
+data_prep_signature_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = optins_trans ~ splines::ns(index.num
+                                                 , knots = quantile(
+                                                     index.num, probs = c(0.33)
+        ))
+    )
 
 # * Seasonal Features ----
 
-# Weekly Seasonality
+# ** Weekly Seasonality
+
+data_prep_signature_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = optins_trans ~ wday.lbl
+    )
 
 
 # ** Monthly Seasonality
 
+data_prep_signature_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = optins_trans ~ month.lbl
+    )
 
 # ** Together with Trend
 
+model_formula_seasonality <- as.formula(
+    optins_trans ~ splines::ns(index.num,
+                               knots = quantile(
+                                   index.num
+                                   , prob = c(.025,0.5)
+                               ))
+    + wday.lbl
+    + month.lbl
+    + .
+)
 
+data_prep_signature_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = model_formula_seasonality
+        , .show_summary = TRUE
+    )
 # 2.0 INTERACTIONS ----
 
 

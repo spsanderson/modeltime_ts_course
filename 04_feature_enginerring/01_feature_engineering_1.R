@@ -149,38 +149,117 @@ data_prep_signature_tbl %>%
         , .formula = model_formula_seasonality
         , .show_summary = TRUE
     )
+
 # 2.0 INTERACTIONS ----
 
+model_formula_interactions <- as.formula(
+    optins_trans ~ splines::ns(index.num,
+                               knots = quantile(
+                                   index.num
+                                   , prob = c(.025,0.5)
+                               ))
+    + .
+    + (as.factor(week2) * wday.lbl)
+)
 
+data_prep_signature_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = model_formula_interactions
+        , .show_summary = TRUE
+    )
 
 # 3.0 FOURIER SERIES ----
 # - tk_augment_fourier
 
 # Data Prep
+data_prep_signature_tbl %>% 
+    plot_acf_diagnostics(
+        optin_time
+        , optins_trans
+    )
 
+data_prep_fourier_tbl <- data_prep_signature_tbl %>%
+    tk_augment_fourier(
+        optin_time
+        , .periods = c(7,14,30,90,365)
+        , .K = 2
+    )
 
 # Model
 
+model_formula_fourier <- as.formula(
+    optins_trans ~ splines::ns(index.num,
+                               knots = quantile(
+                                   index.num
+                                   , prob = c(.025,0.5)
+                               ))
+    + .
+    + (as.factor(week2) * wday.lbl)
+)
+
 
 # Visualize
+data_prep_fourier_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = model_formula_fourier
+        , .show_summary = TRUE
+    )
 
 
 # 4.0 LAGS ----
 # - tk_augment_lags()
 
 # Data Prep
+data_prep_fourier_tbl %>%
+    plot_acf_diagnostics(.date_var = optin_time, .value = optins_trans,
+                         .lags = (8*7 + 1):600)
 
+data_prep_lags_tbl <- data_prep_fourier_tbl %>%
+    tk_augment_lags(
+        .value = optins_trans
+        , .lags = c(57, 63, 70)
+    ) %>%
+    drop_na()
 
 # Model
+model_formula <- as.formula(
+    optins_trans ~ splines::ns(index.num,
+                               knots = quantile(
+                                   index.num
+                                   , prob = c(.025, .50)
+                               ))
+    + .
+    + (as.factor(week2) * wday.lbl)
+)
 
 
 # Visualize
+data_prep_lags_tbl %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = model_formula
+        , .show_summary = TRUE
+    )
 
 
 # 5.0 SPECIAL EVENTS ----
 
 # Data Prep
+learning_labs_daily_tbl <- learning_labs_tbl %>%
+    mutate(event_date = ymd_hms(event_date)) %>%
+    summarise_by_time(.date_var = event_date, .by = "day", event = n())
 
+data_prep_events_tbl <- data_prep_fourier_tbl %>%
+    left_join(learning_labs_daily_tbl, by = c("optin_time" = "event_date")) %>%
+    mutate(event = ifelse(is.na(event), 0, event))
+
+g <- data_prep_events_tbl %>%
+    plot_time_series(optin_time, optins_trans, .interactive = FALSE) +
+    geom_point(color = "red", data = . %>% filter(event == 1))
+
+ggplotly(g)
 
 # Model
 

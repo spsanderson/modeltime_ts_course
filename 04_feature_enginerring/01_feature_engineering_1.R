@@ -262,22 +262,112 @@ g <- data_prep_events_tbl %>%
 ggplotly(g)
 
 # Model
+model_formula <- as.formula(
+    optins_trans ~ splines::ns(index.num,
+                               knots = quantile(
+                                   index.num
+                                   , prob = c(.25, .50)
+                               ))
+    + .
+    + (as.factor(week2) * wday.lbl)
+)
 
 
 # Visualize
+
+data_prep_events_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = model_formula
+        , .show_summary = TRUE
+    )
 
 # 6.0 EXTERNAL LAGGED REGRESSORS ----
 # - xregs
 
 # Data Prep
+google_analytics_prep_tbl <- google_analytics_summary_tbl %>%
+    mutate(date = ymd_h(dateHour)) %>%
+    summarise_by_time(
+        .date_var = date
+        , .by = "day"
+        , across(pageViews:sessions, .fns = sum)
+    ) %>%
+    mutate(across(pageViews:sessions, .fns = log1p)) %>%
+    mutate(across(pageViews:sessions, .fns = standardize_vec))
 
+data_prep_google_tbl <- data_prep_events_tbl %>%
+    left_join(google_analytics_prep_tbl, by = c("optin_time"="date"))
+
+data_prep_google_tbl <- data_prep_google_tbl %>%
+    drop_na() # not good dropped half the data
+
+data_prep_google_tbl %>%
+    plot_acf_diagnostics(
+        optin_time, optins_trans,
+        .ccf_vars = pageViews:sessions,
+        .show_ccf_vars_only = TRUE
+    )
 
 # Model
+model_formula <- as.formula(
+    optins_trans ~ splines::ns(index.num,
+                               knots = quantile(
+                                   index.num
+                                   , prob = c(.25, .50)
+                               ))
+    + .
+    + (as.factor(week2) * wday.lbl)
+)
 
 
 # Visualize
+data_prep_google_tbl %>%
+    plot_time_series_regression(
+        .date_var = optin_time
+        , .formula = model_formula
+        , .show_summary = TRUE
+    )
+
+data_prep_google_tbl %>%
+    select(optin_time, optins_trans, pageViews) %>%
+    pivot_longer(-optin_time) %>%
+    plot_time_series(
+        .date_var = optin_time
+        , .value = value
+        , .color_var = name
+        , .smooth = FALSE
+    )
 
 # 7.0 RECOMMENDATION ----
 # - Best model: 
 # - Best Model Formula:
+# Model
+model_formula <- as.formula(
+    optins_trans ~ splines::ns(index.num,
+                               knots = quantile(
+                                   index.num
+                                   , prob = c(.25, .50)
+                               ))
+    + .
+    + (as.factor(week2) * wday.lbl)
+)
 
+
+# Visualize
+
+data_prep_events_tbl %>%
+    plot_time_series_regression(
+        optin_time
+        , .formula = model_formula
+        , .show_summary = TRUE
+    )
+
+# Linear Regression Model
+
+model_fit_best_lm <- lm(model_formula, data = data_prep_events_tbl)
+
+model_fit_best_lm$terms %>% formula()
+
+write_rds(model_fit_best_lm, path = "00_models/model_fit_best_lm.rds")
+read_rds("00_models/model_fit_best_lm.rds") %>% summary()

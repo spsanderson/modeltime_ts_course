@@ -68,16 +68,61 @@ std_sd      <- 1.1109817111334
 # - Add any lags to full dataset
 # - Add any external regressors to full dataset
 
+horizon <- 8*7
+lag_period <- 8*7
+rolling_periods <- c(30, 60, 90)
 
+data_prepared_full_tbl <- subscribers_transformed_tbl %>%
+    
+    # Add future windows
+    bind_rows(
+        future_frame(., .date_var = optin_time, .length_out = horizon)
+    ) %>%
+    
+    # Add autocorolated lags
+    tk_augment_lags(optins_trans, .lags = lag_period) %>%
+    
+    # Add rolling features
+    tk_augment_slidify(
+        .value     = optins_trans_lag56
+        , .f       = mean
+        , .period  = rolling_periods
+        , .align   = "center"
+        , .partial = TRUE
+    ) %>%
+    
+    # Add external regressors
+    left_join(learning_labs_prep_tbl, by = c("optin_time" = "event_date")) %>%
+    mutate(event = ifelse(is.na(event), 0, event)) %>%
+    
+    # Format columns
+    rename(lab_event = event) %>%
+    rename_with(.cols = contains("lag"), .fn = ~ str_c("lag_", .))
+
+data_prepared_full_tbl %>%
+    pivot_longer(-optin_time) %>%
+    plot_time_series(
+        optin_time
+        , .value = value
+        , .color_var = name
+        , .smooth = FALSE
+    )
 
 # 2.0 STEP 2 - SEPARATE INTO MODELING & FORECAST DATA ----
+data_prepared_tbl <- data_prepared_full_tbl %>%
+    filter(!is.na(optins_trans))
 
-
+forecast_tbl <- data_prepared_full_tbl %>%
+    filter(is.na(optins_trans))
 
 # 3.0 TRAIN/TEST (MODEL DATASET) ----
+splits <- data_prepared_tbl %>%
+    time_series_split(assess = horizon, cumulative = TRUE)
 
-
-
+splits %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(optin_time, optins_trans)
+    
 # 4.0 RECIPES ----
 # - Time Series Signature - Adds bulk time-based features
 # - Spline Transformation to index.num

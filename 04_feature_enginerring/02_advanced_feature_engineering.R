@@ -128,23 +128,61 @@ splits %>%
 # - Spline Transformation to index.num
 # - Interaction: wday.lbl:week2
 # - Fourier Features
+model_fit_best_lm <- read_rds("00_models/model_fit_best_lm.rds")
+model_fit_best_lm %>% summary()
+model_fit_best_lm$terms %>% formula()
 
+recipe_spec_base <- recipe(optins_trans ~ ., data = training(splits)) %>%
+    
+    # Timeseries Signature
+    step_timeseries_signature(optin_time) %>%
+    step_rm(matches("(.iso)|(.xts)|(hour)|(minute)|(second)|(am.pm)")) %>%
+    
+    # Standardization
+    step_normalize(matches("(index.num)|(year)|(yday)")) %>%
+    
+    # Dummy encoding (one hot encoding)
+    step_dummy(all_nominal(), one_hot = TRUE) %>%
+    
+    # Interactions / Fourier
+    step_interact(terms = ~ matches("week2") * matches("wday.lbl")) %>%
+    step_fourier(optin_time, period = c(7,14,30,90,365), K = 2)
 
+recipe_spec_base %>% prep() %>% juice() %>% glimpse()
 
 # 5.0 SPLINE MODEL ----
 
 # * LM Model Spec ----
-
+model_spec_lm <- linear_reg() %>%
+    set_engine("lm")
 
 # * Spline Recipe Spec ----
+recipe_spec_1 <- recipe_spec_base %>%
+    step_rm(optin_time) %>%
+    step_ns(ends_with("index.num"), deg_free = 2) %>%
+    step_rm(starts_with("lag_"))
 
+recipe_spec_1 %>% prep() %>% juice() %>% glimpse()
 
 # * Spline Workflow  ----
-
+workflow_fit_lm_1_spline <- workflow() %>%
+    add_model(model_spec_lm) %>%
+    add_recipe(recipe = recipe_spec_1) %>%
+    fit(training(splits))
 
 # 6.0 MODELTIME  ----
+calibration_tbl <- modeltime_table(
+    workflow_fit_lm_1_spline
+) %>%
+    modeltime_calibrate(testing(splits))
 
+calibration_tbl %>%
+    modeltime_forecast(new_data = testing(splits)
+                       , actual_data = data_prepared_tbl) %>%
+    plot_modeltime_forecast()
 
+calibration_tbl %>%
+    modeltime_accuracy()
 
 # 7.0 LAG MODEL ----
 

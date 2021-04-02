@@ -187,16 +187,61 @@ calibration_tbl %>%
 # 7.0 LAG MODEL ----
 
 # * Lag Recipe ----
+recipe_spec_2 <- recipe_spec_base %>%
+    step_rm(optin_time) %>%
+    step_naomit(starts_with("lag_"))
 
+recipe_spec_2 %>% prep() %>% juice() %>% glimpse()
 
 # * Lag Workflow ----
+workflow_fit_lm_2_lag <- workflow() %>%
+    add_model(model_spec_lm) %>%
+    add_recipe(recipe_spec_2) %>%
+    fit(training(splits))
 
+workflow_fit_lm_2_lag %>% pull_workflow_fit() %>% pluck("fit") %>% summary()
 
 # * Compare with Modeltime -----
+calibration_tbl <- modeltime_table(
+    workflow_fit_lm_1_spline,
+    workflow_fit_lm_2_lag
+) %>%
+    modeltime_calibrate(new_data = testing(splits))
+
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data      = testing(splits)
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+
+calibration_tbl %>%
+    modeltime_accuracy()
+
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data = data_prepared_tbl)
+
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl
+        , actual_data = data_prepared_tbl
+    ) %>%
+    # Invert Transformation
+    mutate(across(.value:.conf_hi, .fns = ~ standardize_inv_vec(
+        x      = .
+        , mean = std_mean
+        , sd   = std_sd
+    ))) %>%
+    mutate(across(.value:.conf_hi, .fns = ~ log_interval_inv_vec(
+        x             = .
+        , limit_lower = limit_lower
+        , limit_upper = limit_upper
+        , offset      = offset
+    ))) %>%
+    plot_modeltime_forecast()
 
 
-
-# 8.0 FUTURE FORECAST ----
+    `````````````````````````````````````````````````````````````````````````````````````````````````````````                                                                   # 8.0 FUTURE FORECAST ----
 
 
 

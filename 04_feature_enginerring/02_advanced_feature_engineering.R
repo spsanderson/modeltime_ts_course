@@ -221,6 +221,7 @@ calibration_tbl %>%
 refit_tbl <- calibration_tbl %>%
     modeltime_refit(data = data_prepared_tbl)
 
+# 8.0 FUTURE FORECAST ----
 refit_tbl %>%
     modeltime_forecast(
         new_data = forecast_tbl
@@ -241,13 +242,40 @@ refit_tbl %>%
     plot_modeltime_forecast()
 
 
-    `````````````````````````````````````````````````````````````````````````````````````````````````````````                                                                   # 8.0 FUTURE FORECAST ----
-
-
-
 # 9.0 SAVE ARTIFACTS ----
 
+feature_engineering_artifacts_lst <- list(
+    # Data
+    data = list(
+        data_prepared_tbl  = data_prepared_tbl
+        , forecast_tbl     = forecast_tbl
+    )
+    # Recipes
+    , recipes = list(
+        recipe_spec_base = recipe_spec_base
+        , recipe_spec_1    = recipe_spec_1
+        , recipe_spec_2    = recipe_spec_2
+    )
+    # Models / Workflows
+    , models = list(
+        workflow_fit_lm_1_spline = workflow_fit_lm_1_spline
+        , workflow_fit_lm_2_lag    = workflow_fit_lm_2_lag   
+    )
+    # Inversion Parameters
+    , standardize = list(
+        std_mean    = std_mean
+        , std_sd      = std_sd
+    )
+    , log_interval = list(
+        limit_lower = limit_lower
+        , limit_upper = limit_upper
+        , offset      = offset
+    )
+)
 
-
-
+feature_engineering_artifacts_lst %>%
+    write_rds(
+        "00_models/feature_engineering_artifacts_list.rds"
+    )
+read_rds("00_models/feature_engineering_artifacts_list.rds")
 

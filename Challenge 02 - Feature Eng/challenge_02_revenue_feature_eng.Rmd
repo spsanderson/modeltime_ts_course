@@ -79,7 +79,10 @@ Our objectives are to:
 
 ```{r}
 # YOUR CODE HERE
-
+transactions_weekly_tbl <- transactions_tbl %>%
+    summarise_by_time(
+        .date_var = purchased_at, .by = "week", revenue = sum(revenue)
+    )
 ```
 
 
@@ -101,7 +104,22 @@ Our objectives are to:
 
 ```{r}
 # YOUR CODE HERE
-
+product_events_weekly_tbl <- product_events_tbl %>%
+    add_column(event_val = 1) %>%
+    group_by(event) %>%
+    summarise_by_time(
+        .date_var   = date
+        , .by       = "week"
+        , event_val = sum(event_val)
+    ) %>%
+    ungroup() %>%
+    pivot_wider(
+        names_from = event
+        , values_from = event_val
+        , values_fill = 0
+        , names_prefix = "event_"
+    ) %>%
+    clean_names()
 ```
 
 # Visualizations
@@ -115,7 +133,11 @@ Use `plot_time_series()` to visualize the revenue.
 
 ```{r}
 # YOUR CODE HERE
-
+transactions_weekly_tbl %>%
+    plot_time_series(
+        .date_var = purchased_at
+        , .value  = log(revenue)
+    )
 ```
 
 ## Visualize ACF
@@ -127,7 +149,11 @@ Visualize the ACF using `plot_acf_diagnostics()` using a `log()` transformation.
 
 ```{r}
 # YOUR CODE HERE
-
+transactions_weekly_tbl %>%
+    plot_acf_diagnostics(
+        .date_var = purchased_at
+        , .value  = log(revenue)
+    )
 ```
 
 
@@ -141,14 +167,17 @@ Visualize the ACF using `plot_acf_diagnostics()` using a `log()` transformation.
 
 ```{r, message = TRUE}
 # YOUR CODE HERE
-
+transactions_trans_weekly_tbl <- transactions_weekly_tbl %>%
+    mutate(revenue_trans = log(revenue) %>%
+               standardize_vec(mean = 0, sd = 1))
 ```
 
 Save the mean and standard deviation as `std_mean` and `std_sd`. We'll need this for inverting.
 
 ```{r}
 # YOUR CODE HERE
-
+std_mean = 0
+std_sd   = 1
 ```
 
 
@@ -156,7 +185,11 @@ Visualize the log-standardized transactions using `plot_time_series()`. This con
 
 ```{r}
 # YOUR CODE HERE
-
+transactions_trans_weekly_tbl %>%
+    plot_time_series(
+        .date_var = purchased_at
+        , .value  = revenue_trans
+    )
 ```
 
 # Create Full Data Set

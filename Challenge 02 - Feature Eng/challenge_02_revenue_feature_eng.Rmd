@@ -235,7 +235,24 @@ Next, join the aggregated weekly transactions revenue data and the product event
 
 ```{r}
 # YOUR CODE HERE
-
+ full_tbl <- transactions_weekly_tbl %>%
+    bind_rows(
+        future_frame(., .date_var = purchased_at, .length_out = horizon)
+    ) %>%
+    tk_augment_lags(.value = revenue, .lags = lag_period) %>%
+    tk_augment_slidify(
+        .value = revenue
+        , .period = rolling_periods
+        , .f = mean
+        , .align = "center"
+        , .partial = TRUE
+    ) %>%
+    left_join(
+        product_events_weekly_tbl
+        , by = c("purchased_at"="date")
+    ) %>%
+    mutate(across(starts_with("event_"), .fns = ~ ifelse(is.na(.), 0, .))) %>%
+    rename_with(.cols = contains("lag"), .fn = ~ str_c("lag_", .))
 ```
 
 ## Visualize the Full Data
@@ -254,7 +271,16 @@ Review the visualization selecting one feature at a time and answering the follo
 
 ```{r}
 # YOUR CODE HERE
-
+full_tbl %>%
+    pivot_longer(
+        -purchased_at
+    ) %>%
+    plot_time_series(
+        .date_var = purchased_at
+        , .value = value
+        , .smooth = FALSE
+        , .color_var = name
+    )
 ```
 
 # Model Data / Forecast Data Split
@@ -270,14 +296,14 @@ Create a `data_prepared_tbl` by filtering `full_tbl` where "revenue" is non-miss
 
 ```{r}
 # YOUR CODE HERE
-
+data_prepared_tbl <- filter(full_tbl, !is.na(revenue))
 ```
 
 Create a `forecast_tbl` by filtering `full_tbl` where "revenue" is missing. 
 
 ```{r}
 # YOUR CODE HERE
-
+forecast_tbl <- filter(full_tbl, is.na(revenue))
 ```
 
 
@@ -303,7 +329,12 @@ forecast_tbl      <- read_rds("challenge_02_data_checkpoints/forecast_tbl.rds")
 
 ```{r}
 # YOUR CODE HERE
-
+splits <- data_prepared_tbl %>%
+    time_series_split(
+        .date_var = purchased_at
+        , assess = horizon
+        , cumulative = TRUE
+    )
 ```
 
 

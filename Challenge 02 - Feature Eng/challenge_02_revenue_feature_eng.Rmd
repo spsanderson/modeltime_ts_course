@@ -168,16 +168,16 @@ transactions_weekly_tbl %>%
 ```{r, message = TRUE}
 # YOUR CODE HERE
 transactions_trans_weekly_tbl <- transactions_weekly_tbl %>%
-    mutate(revenue_trans = log(revenue) %>%
-               standardize_vec(mean = 0, sd = 1))
+    mutate(revenue = log(revenue)) %>%
+    mutate(revenue = standardize_vec(revenue))
 ```
 
 Save the mean and standard deviation as `std_mean` and `std_sd`. We'll need this for inverting.
 
 ```{r}
 # YOUR CODE HERE
-std_mean = 0
-std_sd   = 1
+std_mean = 11.2910425517621
+std_sd   = 0.655408027721517
 ```
 
 
@@ -188,7 +188,7 @@ Visualize the log-standardized transactions using `plot_time_series()`. This con
 transactions_trans_weekly_tbl %>%
     plot_time_series(
         .date_var = purchased_at
-        , .value  = revenue_trans
+        , .value  = revenue
     )
 ```
 
@@ -209,7 +209,7 @@ std_sd   <- standardize_params$std_sd
 ```
 
 
-We'll use these parameters to create our "full dataset". We've selecte an 8-week forecast horizon. Our lag period is 8 weeks and we'll try out a few rolling averages at various aggregations. 
+We'll use these parameters to create our "full dataset". We've selected an 8-week forecast horizon. Our lag period is 8 weeks and we'll try out a few rolling averages at various aggregations. 
 
 ```{r}
 horizon         <- 8
@@ -331,8 +331,8 @@ forecast_tbl      <- read_rds("challenge_02_data_checkpoints/forecast_tbl.rds")
 # YOUR CODE HERE
 splits <- data_prepared_tbl %>%
     time_series_split(
-        .date_var = purchased_at
-        , assess = horizon
+        .date_var    = purchased_at
+        , assess     = horizon
         , cumulative = TRUE
     )
 ```
@@ -365,7 +365,15 @@ Make a preprocessing recipe using `recipe()`. Note - It may help to `prep()` and
 
 ```{r}
 # YOUR CODE HERE
-
+recipe_spec_base <- recipe(revenue ~ ., data = training(splits)) %>%
+    step_timeseries_signature(purchased_at) %>%
+    step_rm(matches("(.iso)|(xts)|(_day)|(hour)|(minute)|(second)|(am.pm)")) %>%
+    step_normalize(
+        !matches("(revenue)|(purchased_at)|(_revenue)")
+        , all_numeric()
+    ) %>%
+    step_dummy(all_nominal(), one_hot = TRUE) %>%
+    step_fourier(purchased_at, period = c(4, 20), K = 2)
 ```
 
 
@@ -391,7 +399,11 @@ Which value of `df` would you select?
 
 ```{r}
 # YOUR CODE HERE
-
+plot_time_series_regression(
+    .data = data_prepared_tbl
+    , .date_var = purchased_at
+    , .formula = revenue ~ splines::ns(purchased_at, df = 4)
+)
 ```
 
 
@@ -405,7 +417,8 @@ Create a model specification for linear regression:
 
 ```{r}
 # YOUR CODE HERE
-
+model_spec_lm <- linear_reg() %>%
+    set_engine("lm")
 ```
 
 ### Recipe Spec - Spline
@@ -421,7 +434,10 @@ Create a recipe for the spline model.
 
 ```{r}
 # YOUR CODE HERE
-
+recipe_spec_1_spline <- recipe_spec_base %>%
+    step_rm(purchased_at) %>%
+    step_ns(ends_with("index.num"), deg_free = 3) %>%
+    step_rm(starts_with("lag_"))
 ```
 
 
@@ -437,7 +453,10 @@ Create a workflow for the linear regression and preprocessing recipe:
 
 ```{r}
 # YOUR CODE HERE
-
+workflow_fit_lm_1_spline <- workflow() %>%
+    add_model(model_spec_lm) %>%
+    add_recipe(recipe_spec_1_spline) %>%
+    fit(training(splits))
 ```
 
 ## Rolling Lag Model
@@ -454,7 +473,9 @@ Create a recipe for the spline model.
 
 ```{r}
 # YOUR CODE HERE
-
+recipe_spec_2_spline <- recipe_spec_base %>%
+    step_rm(purchased_at) %>%
+    step_naomit(starts_with("lag_"))
 ```
 
 ### Workflow - Lag
@@ -463,7 +484,10 @@ Save the workflow as `workflow_fit_lm_2_lag`.
 
 ```{r}
 # YOUR CODE HERE
-
+workflow_fit_lm_2_lag <- workflow() %>%
+    add_model(model_spec_lm) %>%
+    add_recipe(recipe_spec_2_spline) %>%
+    fit(training(splits))
 ```
 
 # Modeltime
@@ -486,7 +510,10 @@ Start by making a modeltime table:
 
 ```{r}
 # YOUR CODE HERE
-
+model_tbl <- modeltime_table(
+    workflow_fit_lm_1_spline,
+    workflow_fit_lm_2_lag
+)
 ```
 
 As a precautionary measure, please refit the models using `modeltime_refit()`. This prevents models that can go bad over time because of software changes. 
@@ -508,7 +535,8 @@ Use testing data to calibrate the model:
 
 ```{r}
 # YOUR CODE HERE
-
+calibration_tbl <- model_tbl %>%
+    modeltime_calibrate(testing(splits))
 ```
 
 ### Calculate the Accuracy
@@ -517,7 +545,8 @@ Use `modeltime_accuracy()` to calculate the accuracy metrics.
 
 ```{r}
 # YOUR CODE HERE
-
+calibration_tbl %>%
+    modeltime_accuracy()
 ```
 
 ### Visualize the Model Forecast
@@ -529,7 +558,12 @@ Use `modeltime_accuracy()` to calculate the accuracy metrics.
 
 ```{r}
 # YOUR CODE HERE
-
+model_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits)
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 ```
 
 
@@ -555,7 +589,8 @@ calibration_tbl <- read_rds("challenge_02_data_checkpoints/calibration_tbl.rds")
 
 ```{r}
 # YOUR CODE HERE
-
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data = data_prepared_tbl)
 ```
 
 
@@ -567,7 +602,12 @@ calibration_tbl <- read_rds("challenge_02_data_checkpoints/calibration_tbl.rds")
 
 ```{r}
 # YOUR CODE HERE
-
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 ```
 
 ## Invert Transformation
@@ -579,7 +619,19 @@ Apply the inversion to the forecast plot:
 
 ```{r}
 # YOUR CODE HERE
-
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl
+        , actual_data = data_prepared_tbl
+    ) %>%
+    # invert transformation
+    mutate(across(.value:.conf_hi, .fns = ~ standardize_inv_vec(
+        x    = .,
+        mean = std_mean,
+        sd   = std_sd
+    ))) %>%
+    mutate(across(.value:.conf_hi, .fns = exp)) %>%
+    plot_modeltime_forecast()
 ```
 
 

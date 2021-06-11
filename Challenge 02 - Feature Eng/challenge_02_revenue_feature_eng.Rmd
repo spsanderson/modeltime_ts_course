@@ -642,3 +642,63 @@ refit_tbl %>%
 - What do we think of these forecasts?
 - How can we further improve them? (HINT: what have competitors used that we haven't?)
 
+# Bonus
+
+## GLMNET - Elastic Net
+
+```{r glmnet}
+workflow_fit_glmnet_2_lag <- workflow_fit_lm_2_lag %>%
+    update_model(
+        spec = linear_reg(penalty = 0.1, mixture = 0.5) %>%
+            set_engine("glmnet")
+    ) %>%
+    fit(training(splits))
+```
+
+```{r}
+calibration_tbl <- modeltime_table(
+    workflow_fit_lm_1_spline,
+    workflow_fit_lm_2_lag,
+    workflow_fit_glmnet_2_lag
+) %>%
+    update_model_description(.model_id = 1, "LM - Spline Recipe") %>%
+    update_model_description(.model_id = 2, "LM - Lag Recipe") %>%
+    update_model_description(.model_id = 3, "GLMNET - Lag Recipe") %>%
+    modeltime_refit(training(splits)) %>%
+    modeltime_calibrate(testing(splits), quiet = FALSE)
+```
+
+```{r}
+calibration_tbl %>%
+    modeltime_accuracy()
+```
+
+```{r}
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits)
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+```
+
+```{r}
+calibration_tbl %>%
+    modeltime_residuals() %>%
+    plot_modeltime_residuals()
+```
+
+```{r}
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data = data_prepared_tbl)
+```
+
+```{r}
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+```
+

@@ -1,0 +1,683 @@
+---
+title: "Challenge 02: Revenue Feature Engineering & Modeltime Workflow"
+subtitle: "DS4B 203-R, Time Series Forecasting for Business"
+author: "Business Science"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = TRUE,
+    message = F,
+    warning = F,
+    paged.print = FALSE, 
+    # This should allow Rmarkdown to locate the data
+    root.dir = rprojroot::find_rstudio_root_file()
+)
+```
+
+# Challenge Objective
+
+Your goal is to perform an 8-week revenue forecast. You'll need to engineer features that help. In this challenge, you'll:
+
+1. Add event data to the transactions revenue dataset 
+2. Preprocess the data
+3. Create multiple `recipes`
+3. Implement a `modeltime` forecasting workflow using multiple linear regression workflow objects
+
+
+# Libraries
+
+```{r}
+# Modeling
+library(tidymodels)
+library(modeltime)
+
+# Core
+library(tidyverse)
+library(timetk)
+library(lubridate)
+library(janitor)
+```
+
+
+# Collect Data
+
+Read in the following data sets. 
+
+## Transactions Revenue
+
+```{r}
+transactions_tbl  <- read_rds("../00_data/transactions_weekly.rds")
+transactions_tbl
+```
+
+## Product Events
+
+The product events data consists of date and events that are known to affect sales. 
+
+```{r}
+product_events_tbl <- read_rds("../00_data/product_events.rds")
+product_events_tbl
+```
+
+# Preparing Data
+
+Our objectives are to:
+
+- Aggregate data to common time-stamps
+- Apply any transformations
+- Detect any lags & add rolling features
+- Create a Full Data Set: Adding Future observations, lags, and external regressors
+
+
+## Aggregate Revenue by Week
+
+1. Start with `transactions_tbl`
+2. Use `summarise_by_time()` with `.by = "week"`, and `sum()` the revenue.
+3. Save as a new variable called `transactions_weekly_tbl`
+
+```{r}
+transactions_weekly_tbl <- transactions_tbl %>%
+    summarise_by_time(.by = "week", revenue = sum(revenue))
+
+transactions_weekly_tbl
+```
+
+
+
+## Aggregate Events by Week
+
+1. Start with `product_events_tbl`
+2. Use `add_column()` to create a column called "event_val". Set the values in the column to `1`. 
+3. Use `group_by()` to group on the "event" column.
+4. Use `summarise_by_time()` with `.by = "week"`, and `sum()` the "event_val" column.
+5. Ungroup the data. 
+6. Pivot the data wider so we have a "date" column:
+    - Use: `names_from   = event`
+    - Use: `values_from  = event_val`
+    - Use: `values_fill  = 0`
+    - Use: `names_prefix = "event_"`
+7. Clean the names with `janitor::clean_names()`
+7. Save as a new variable called `product_events_weekly_tbl`
+
+```{r}
+product_events_weekly_tbl <- product_events_tbl %>%
+    add_column(event_val = 1) %>%
+    group_by(event) %>%
+    summarise_by_time(date, .by = "week", event_val = sum(event_val)) %>%
+    ungroup() %>%
+    pivot_wider(
+        names_from   = event, 
+        values_from  = event_val, 
+        values_fill  = 0, 
+        names_prefix = "event_"
+    ) %>%
+    clean_names()
+
+product_events_weekly_tbl
+```
+
+# Visualizations
+
+## Visualize Revenue
+
+Use `plot_time_series()` to visualize the revenue. 
+
+- Look for outliers & any data issues
+- Try out a `log()` transformation to see the effect on the time series
+
+```{r}
+transactions_weekly_tbl %>% 
+    plot_time_series(purchased_at, log(revenue))
+```
+
+## Visualize ACF
+
+Visualize the ACF using `plot_acf_diagnostics()` using a `log()` transformation. Look for:
+
+- Any frequencies we can include?
+- Any lags we can include? (Hint - What is our forecast horizon?)
+
+```{r}
+transactions_weekly_tbl %>% 
+    plot_acf_diagnostics(purchased_at, log(revenue))
+```
+
+
+## Log-Standardize Revenue (Target)
+
+- Start with `transactions_weekly_tbl`
+- Apply log-standardization:
+    - Apply Log transformation using `log()`
+    - Apply standardization to mean = 0, sd = 1 using `standardize_vec()`
+- Store the resulting data as `transactions_trans_weekly_tbl`
+
+```{r, message = TRUE}
+transactions_trans_weekly_tbl <- transactions_weekly_tbl %>%
+    mutate(revenue = log(revenue)) %>%
+    mutate(revenue = standardize_vec(revenue))
+```
+
+Save the mean and standard deviation as `std_mean` and `std_sd`. We'll need this for inverting.
+
+```{r}
+std_mean <- 11.2910425517621
+std_sd   <- 0.655408027721517
+```
+
+
+Visualize the log-standardized transactions using `plot_time_series()`. This confirms the transformation was performed successfully. 
+
+```{r}
+transactions_trans_weekly_tbl %>%
+    plot_time_series(purchased_at, revenue)
+```
+
+# Create Full Data Set
+
+```{r}
+# transactions_trans_weekly_tbl %>% write_rds("challenge_02_data_checkpoints/transactions_trans_weekly_tbl.rds")
+# product_events_weekly_tbl %>% write_rds("challenge_02_data_checkpoints/product_events_weekly_tbl.rds")
+# list(std_mean = std_mean, std_sd = std_sd) %>% write_rds("challenge_02_data_checkpoints/standardize_params.rds")
+
+# Checkpoint data
+product_events_weekly_tbl     <- read_rds("challenge_02_data_checkpoints/product_events_weekly_tbl.rds")
+transactions_trans_weekly_tbl <- read_rds("challenge_02_data_checkpoints/transactions_trans_weekly_tbl.rds")
+standardize_params            <- read_rds("challenge_02_data_checkpoints/standardize_params.rds")
+
+std_mean <- standardize_params$std_mean
+std_sd   <- standardize_params$std_sd
+```
+
+
+We'll use these parameters to create our "full dataset". We've selecte an 8-week forecast horizon. Our lag period is 8 weeks and we'll try out a few rolling averages at various aggregations. 
+
+```{r}
+horizon         <- 8
+lag_period      <- 8
+rolling_periods <- c(4, 8, 16, 24, 36)
+```
+
+
+## Prepare the full data
+
+Next, join the aggregated weekly transactions revenue data and the product events data. 
+
+1. Start with `transactions_weekly_tbl`
+2. __Add the future window:__ Use `bind_rows()` and `future_frame()` to extend the data frame `.length_out = horizon`.
+3. __Add autocorrelated lags:__ Use `tk_augment_lags()` to add a `.lags = lag_period`
+4. __Add rolling features from our lag__: Use `tk_agument_slidify()` to add `.period = rolling_periods`. Use `mean` as the rolling function. Make sure to "center" with "partial" windows. 
+5. __Add events__:
+    - Left join `product_events_weekly_tbl`
+    - Fill in the missing values with zero for any column that start with "event_"
+6. Rename any columns that contain "lag". Modify to start with "lag_"
+6. Save the output as `full_tbl`.
+
+
+```{r}
+full_tbl <- transactions_trans_weekly_tbl %>%
+    
+    # Add future window
+    bind_rows(
+        future_frame(.data = ., .date_var = purchased_at, .length_out = horizon)
+    ) %>%
+    
+    # Add autocorrelated lags
+    tk_augment_lags(revenue, .lags = lag_period) %>%
+    
+    # Add rolling features
+    tk_augment_slidify(
+        .value   = revenue_lag8,
+        .f       = mean, 
+        .period  = rolling_periods,
+        .align   = "center",
+        .partial = TRUE
+    ) %>%
+    
+    # Add events
+    left_join(product_events_weekly_tbl, by = c("purchased_at" = "date")) %>%
+    mutate(across(starts_with("event_"), .fns = ~ ifelse(is.na(.), 0, .))) %>%
+    
+    # Rename columns
+    rename_with(.cols = contains("lag"), .fn = ~ str_c("lag_", .))
+
+full_tbl %>% glimpse()
+```
+
+## Visualize the Full Data
+
+Visualize the features, and review what you see. 
+
+1. Start with `full_tbl`
+2. `pivot_longer` every column except "purchased_at"
+3. Use `plot_time_series()` to visualize the time series coloring by "name". 
+
+Review the visualization selecting one feature at a time and answering the following questions:
+    
+    - Do the rolling lags present any issues? 
+    - Which rolling lag captures the trend the best?
+    - Do you expect either of the Product Events features to help?
+
+```{r}
+full_tbl %>%
+    pivot_longer(-purchased_at) %>%
+    plot_time_series(purchased_at, value, name, .smooth = FALSE)
+```
+
+# Model Data / Forecast Data Split
+
+```{r}
+# full_tbl %>% write_rds("challenge_02_data_checkpoints/full_tbl.rds")
+
+# Checkpoint data
+full_tbl <- read_rds("challenge_02_data_checkpoints/full_tbl.rds")
+```
+
+Create a `data_prepared_tbl` by filtering `full_tbl` where "revenue" is non-missing. 
+
+```{r}
+data_prepared_tbl <- full_tbl %>%
+    filter(!is.na(revenue))
+data_prepared_tbl
+```
+
+Create a `forecast_tbl` by filtering `full_tbl` where "revenue" is missing. 
+
+```{r}
+forecast_tbl <- full_tbl %>%
+    filter(is.na(revenue))
+forecast_tbl
+```
+
+
+# Train / Test Split
+
+```{r}
+# data_prepared_tbl %>% write_rds("challenge_02_data_checkpoints/data_prepared_tbl.rds")
+# forecast_tbl %>% write_rds("challenge_02_data_checkpoints/forecast_tbl.rds")
+
+# Checkpoint data
+data_prepared_tbl <- read_rds("challenge_02_data_checkpoints/data_prepared_tbl.rds")
+forecast_tbl      <- read_rds("challenge_02_data_checkpoints/forecast_tbl.rds")
+```
+
+
+## Split into Train / Test Sets
+
+- Start with `data_prepared_tbl`
+- Use `time_series_split()` to create a single time series split. 
+    - Set `assess = horizon` to get the last 8-weeks of data as testing data. 
+    - Set `cumulative = TRUE` to use all of the previous data as training data. 
+- Save the object as `splits`
+
+```{r}
+splits <- data_prepared_tbl %>% 
+    time_series_split(assess = horizon, cumulative = TRUE)
+```
+
+
+
+# Feature Engineering
+
+```{r}
+# write_rds(splits, "challenge_02_data_checkpoints/splits.rds")
+
+# Checkpoint data
+splits <- read_rds("challenge_02_data_checkpoints/splits.rds")
+```
+
+## Create a Preprocessing recipe
+
+Make a preprocessing recipe using `recipe()`. Note - It may help to `prep()` and `juice()` your recipe to see the effect of your transformations. 
+
+- Start with `recipe()` using "revenue ~ ." and `data = training(splits)`
+- Add the following steps:
+    - `step_timeseries_signature()` using the date feature
+    - Remove any newly created features that:
+        - Contain ".iso"
+        - End with "xts"
+        - Contain "day", "hour", "minute", "second" or "am.pm" (because this is a weekly dataset and these features won't add any predictive value)
+    - Normalize all numeric data except for "revenue" (the target) with `step_normalize()`.
+    - Dummy all categorical features with `step_dummy()`. Set `one_hot = TRUE`.
+    - Add a fourier series at periods 4 and 20. Set K = 2 for both. 
+
+```{r}
+recipe_spec_base <- recipe(revenue ~ ., data = training(splits)) %>%
+    
+    # Time Series Signature
+    step_timeseries_signature(purchased_at) %>%
+    step_rm(matches("(iso)|(xts)|(hour)|(minute)|(second)|(am.pm)")) %>%
+    
+    # Standardization
+    step_normalize(matches("(index.num)|(year)|(yday)")) %>%
+    
+    # Dummy Encoding (One Hot Encoding)
+    step_dummy(all_nominal(), one_hot = TRUE) %>%
+    
+    # Fourier - 4 Week ACF
+    step_fourier(purchased_at, period = c(4, 52/2, 52), K = 2)
+
+recipe_spec_base %>% prep() %>% juice() %>% glimpse()
+```
+
+
+# Modeling
+
+```{r}
+# write_rds(recipe_spec_base, "challenge_02_data_checkpoints/recipe_spec_base.rds")
+
+# Checkpoint data
+recipe_spec_base <- read_rds("challenge_02_data_checkpoints/recipe_spec_base.rds")
+```
+
+
+## Spline Model
+
+### Visualize
+
+Use `plot_time_series_regression` to test out several natural splies:
+
+- Use .formula to try out `splines::ns()` with degrees of freedom 1, 2, 3, and 4. 
+
+Which value of `df` would you select?
+
+```{r}
+data_prepared_tbl %>%
+    plot_time_series_regression(
+        .date_var     = purchased_at,
+        .formula      = revenue ~ splines::ns(purchased_at, df = 3),
+        .show_summary = FALSE
+    )
+```
+
+
+### LM Model Spec
+
+Create a model specification for linear regression:
+
+- Use `linear_reg()` function
+- Use `set_engine("lm")`
+- Store as `model_spec_lm`
+
+```{r}
+model_spec_lm <- linear_reg() %>%
+    set_engine("lm")
+```
+
+### Recipe Spec - Spline
+
+Create a recipe for the spline model. 
+
+1. Start with `recipe_spec_base`
+2. Add a step to remove the "purchased_at" feature. We don't need this for LM models. 
+3. Add a step for the natural spline. Set `deg_free = 3`
+4. Remove any features that begin with "lag_"
+5. Store your updated recipe as `recipe_spec_1_spline`
+6. Glimpse the output. Were the features adjusted correctly?
+
+```{r}
+recipe_spec_1_spline <- recipe_spec_base %>%
+    step_rm(purchased_at) %>%
+    step_ns(ends_with("index.num"), deg_free = 3) %>%
+    step_rm(starts_with("lag_"))
+
+recipe_spec_1_spline %>% prep() %>% juice() %>% glimpse()
+```
+
+
+### Workflow - Spline
+
+Create a workflow for the linear regression and preprocessing recipe:
+
+- Start with a `workflow()`
+- Use `add_model()` to add the `model_spec_lm`
+- Use `add_recipe()` to add the `recipe_spec_1_spline`
+- Store as `workflow_fit_lm_1_spline`
+
+
+```{r}
+workflow_fit_lm_1_spline <- workflow() %>%
+    add_model(model_spec_lm) %>%
+    add_recipe(recipe_spec_1_spline) %>%
+    fit(training(splits))
+
+workflow_fit_lm_1_spline %>% pull_workflow_fit() %>% pluck("fit") %>% summary()
+```
+
+## Rolling Lag Model
+
+### Recipe Spec - Lag
+
+Create a recipe for the spline model. 
+
+1. Start with `recipe_spec_base`
+2. Add a step to remove the "purchased_at" feature. We don't need this for LM models. 
+3. Remove missing values in any column that starts with "lag_"
+4. Store your updated recipe as `recipe_spec_2_lag`
+5. Glimpse the output. Were the features adjusted correctly?
+
+```{r}
+recipe_spec_2_lag <- recipe_spec_base %>%
+    step_rm(purchased_at) %>%
+    # step_rm(matches("(roll_4$)|")) %>%
+    step_naomit(starts_with("lag_"))
+
+recipe_spec_2_lag %>% prep() %>% juice() %>% glimpse()
+```
+
+### Workflow - Lag
+
+Save the workflow as `workflow_fit_lm_2_lag`.
+
+```{r}
+workflow_fit_lm_2_lag <- workflow() %>%
+    add_model(model_spec_lm) %>%
+    add_recipe(recipe_spec_2_lag) %>%
+    fit(training(splits))
+
+workflow_fit_lm_2_lag %>% pull_workflow_fit() %>% pluck("fit") %>% summary()
+```
+
+# Modeltime
+
+```{r}
+# write_rds(workflow_fit_lm_1_spline, "challenge_02_data_checkpoints/workflow_fit_lm_1_spline.rds")
+# write_rds(workflow_fit_lm_2_lag, "challenge_02_data_checkpoints/workflow_fit_lm_2_lag.rds")
+
+# Checkpoint data
+workflow_fit_lm_1_spline <- read_rds("challenge_02_data_checkpoints/workflow_fit_lm_1_spline.rds")
+workflow_fit_lm_2_lag    <- read_rds("challenge_02_data_checkpoints/workflow_fit_lm_2_lag.rds")
+```
+
+### Make a Modeltime Table
+
+Start by making a modeltime table:
+
+- Use `modeltime_table()` to store your fitted workflows
+- Save as `model_tbl`
+
+```{r}
+model_tbl <- modeltime_table(
+    workflow_fit_lm_1_spline,
+    workflow_fit_lm_2_lag
+)
+
+model_tbl
+```
+
+As a precautionary measure, please refit the models using `modeltime_refit()`. This prevents models that can go bad over time because of software changes. 
+
+```{r}
+# Refitting makes sure your models work over time. 
+model_tbl <- model_tbl %>%
+    modeltime_refit(training(splits))
+```
+
+### Calibrate the Table
+
+Use testing data to calibrate the model:
+
+- Start with `model_tbl`
+- Use `modeltime_calibrate()` to calibrate the model using `testing(splits)` (out-of-sample data)
+- Store the result as `calibration_tbl`
+
+```{r}
+calibration_tbl <- model_tbl %>%
+    modeltime_calibrate(testing(splits))
+
+calibration_tbl
+```
+
+### Calculate the Accuracy
+
+Use `modeltime_accuracy()` to calculate the accuracy metrics.
+
+```{r}
+calibration_tbl %>% modeltime_accuracy()
+```
+
+### Visualize the Model Forecast
+
+- Use `modeltime_forecast()`:
+    - Set `new_data = testing(splits)`
+    - Set `actual_data = data_prepared_tbl`
+- Pipe the result into `plot_modeltime_forecast()`
+
+```{r}
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data    = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+```
+
+
+Forecasting thoughts:
+
+- What can you say about the Rolling Lag Model?
+- What might we be able to do to correct the model? (HINT: Try removing features in the lag model - what happens?)
+
+# Forecast Future Data
+
+```{r}
+# write_rds(calibration_tbl, "challenge_02_data_checkpoints/calibration_tbl.rds")
+
+# Checkpoint data
+calibration_tbl <- read_rds("challenge_02_data_checkpoints/calibration_tbl.rds")
+```
+
+
+## Refit the Model
+
+- Start with the `calibration_tbl`
+- Use `modeltime_refit()` refit the model on the `data_prepared_tbl` dataset
+
+```{r}
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data = data_prepared_tbl)
+```
+
+
+## Forecast
+
+1. Start with `refit_tbl`
+2. Use `modeltime_forecast()` to forecast the `new_data = forecast_tbl`. Use `data_prepared_tbl` as the actual data. 
+3. Plot the forecast using `plot_modeltime_forecast()`
+
+```{r}
+refit_tbl %>%
+    modeltime_forecast(new_data    = forecast_tbl,
+                       actual_data = data_prepared_tbl) %>%
+    
+    
+    plot_modeltime_forecast()
+```
+
+## Invert Transformation
+
+Apply the inversion to the forecast plot:
+
+- Invert the standardization
+- Invert the log transformation
+
+```{r}
+refit_tbl %>%
+    modeltime_forecast(new_data    = forecast_tbl,
+                       actual_data = data_prepared_tbl) %>%
+    
+    # Invert Transformation
+    mutate(across(.value:.conf_hi, .fns = ~ standardize_inv_vec(
+        x    = .,
+        mean = std_mean,
+        sd   = std_sd
+    ))) %>%
+    mutate(across(.value:.conf_hi, .fns = exp)) %>%
+    
+    plot_modeltime_forecast()
+```
+
+
+
+
+# Forecast Review
+
+- What do we think of these forecasts?
+- How can we further improve them? (HINT: what have competitors used that we haven't?)
+
+
+# BONUS
+
+## GLMNet - Elastic Net 
+
+```{r}
+workflow_fit_glmnet_2_lag <- workflow_fit_lm_2_lag %>%
+    update_model(
+        spec = linear_reg(penalty = 0.1, mixture = 0.5) %>%
+            set_engine("glmnet")
+    ) %>%
+    fit(training(splits))
+```
+
+```{r}
+calibration_tbl <- modeltime_table(
+    workflow_fit_lm_1_spline,
+    workflow_fit_lm_2_lag,
+    workflow_fit_glmnet_2_lag
+) %>%
+    
+    update_model_description(.model_id = 1, "LM - Spline Recipe") %>%
+    update_model_description(2, "LM - Lag Recipe") %>%
+    update_model_description(3, "GLMNET - Lag Recipe") %>%
+    
+    modeltime_calibrate(testing(splits))
+```
+
+```{r}
+calibration_tbl %>% modeltime_accuracy()
+```
+
+```{r}
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+```
+
+```{r}
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data = data_prepared_tbl)
+```
+
+```{r}
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+```
+

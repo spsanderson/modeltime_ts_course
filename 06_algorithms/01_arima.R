@@ -45,13 +45,37 @@ train_tbl <- training(splits) %>%
 # 1.0 CONCEPTS ----
 
 # * Auto Regression (AR) ----
+?ar
+ar(train_tbl$optins_trans, order.max = 3)
+?arima
+fit_arima_ar <- arima(train_tbl$optins_trans, order = c(3,0,0))
 
+fit_lm_ar <- lm(optins_trans ~ lag_vec(optins_trans, 1) + 
+       lag_vec(optins_trans, 2)+
+       lag_vec(optins_trans, 3)
+   , data = train_tbl)
+
+fit_lm_ar
+fit_arima_ar
 
 # * Single Step Forecast ----
+predict(fit_arima_ar, 1) %>%
+    as_tibble()
 
+predict(
+    object = fit_lm_ar
+    , newdata = tibble(
+        optins_trans = c(train_tbl$optins_trans %>% tail(3), NA)
+    )
+) %>%
+    as_tibble()
 
 # * Multi-Step Forecast (Recursive) ----
+predict(fit_arima_ar, 3) %>% 
+    as_tibble()
 
+predict(fit_lm_ar, newdata = tibble(optins_trans = c(train_tbl$optins_trans %>% tail(3), NA)))
+predict(fit_lm_ar, newdata = tibble(optins_trans = c(train_tbl$optins_trans %>% tail(2), 0.911, NA)))
 
 # * Integration (I) -----
 

@@ -78,30 +78,95 @@ predict(fit_lm_ar, newdata = tibble(optins_trans = c(train_tbl$optins_trans %>% 
 predict(fit_lm_ar, newdata = tibble(optins_trans = c(train_tbl$optins_trans %>% tail(2), 0.911, NA)))
 
 # * Integration (I) -----
+train_diff_tbl <- train_tbl %>%
+    mutate(optins_trans = diff_vec(optins_trans, lag = 1, difference = 1)) %>%
+    drop_na()
 
+arima(train_tbl$optins_trans, order = c(1,1,0))
+arima(train_diff_tbl$optins_trans, order = c(1,0,0))
 
+lm(optins_trans ~ lag_vec(optins_trans, 1), data = train_diff_tbl)
 
 # * ARIMA (MA) = Modeling Errors ----
+arima(train_tbl$optins_trans, order = c(1,0,1))
 
+fit_lm_ar1 <- lm(optins_trans ~ lag_vec(optins_trans, 1), data = train_tbl)
 
+fitted_values_vec <- predict(fit_lm_ar1) %>% as.numeric()
+
+train_error_tbl <- train_tbl %>%
+    slice(-1) %>%
+    mutate(error = optins_trans - fitted_values_vec)
+
+lm(optins_trans ~ lag_vec(optins_trans, 1) + lag_vec(error, 1)
+   , data = train_error_tbl)
 
 # * Seasonal ARIMA ----
+arima(
+    train_tbl$optins_trans,
+    order = c(1,0,0),
+    seasonal = list(
+        order = c(2,0,0),
+        period = 7
+    )
+)
 
-
-
+lm(
+    optins_trans ~ lag_vec(optins_trans, 1) +
+        lag_vec(optins_trans, 7)+
+        lag_vec(optins_trans, 14),
+    data = train_tbl
+)
 
 # * SARIMAX - Seasonal Regression w/ ARIMA Errors ----
 
+arima(
+    train_tbl$optins_trans,
+    order    = c(1,0,0),
+    seasonal = list(
+        order  = c(2,0,0),
+        period = 7
+    ),
+    xreg = matrix(month(train_tbl$optin_time))
+)
 
+lm(
+    optins_trans ~ lag_vec(optins_trans, 1) +
+        lag_vec(optins_trans, 7) +
+        lag_vec(optins_trans, 14) +
+        month(optin_time),
+    data = train_tbl
+)
 
 
 # 2.0 ARIMA ----
 
+model_fit_arima <- arima_reg(
+    seasonal_period = 7,
+    seasonal_ar = 1,
+    seasonal_differences = 1,
+    seasonal_ma = 1,
+    non_seasonal_ar = 1,
+    non_seasonal_differences = 1,
+    non_seasonal_ma = 1
+) %>%
+    set_engine("arima") %>%
+    fit(optins_trans ~ optin_time, training(splits))
 
+modeltime_table(
+    model_fit_arima
+) %>%
+    modeltime_calibrate(testing(splits)) %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 
 # 3.0 AUTO ARIMA + XREGS ----
 
 # * Model ----
+
 
 
 # * Calibrate ----

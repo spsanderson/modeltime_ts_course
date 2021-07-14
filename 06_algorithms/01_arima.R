@@ -167,19 +167,55 @@ modeltime_table(
 
 # * Model ----
 
+model_fit_auto_arima <- arima_reg() %>%
+    set_engine("auto_arima") %>%
+    fit(
+        optins_trans ~ .
+        + fourier_vec(optin_time, period = 7)
+        + fourier_vec(optin_time, period = 14)
+        + fourier_vec(optin_time, period = 30)
+        + fourier_vec(optin_time, period = 90)
+        + month(optin_time, label = TRUE),
+        data = training(splits)
+    )
 
 
 # * Calibrate ----
 
+calibration_tbl <- modeltime_table(
+    model_fit_arima,
+    model_fit_auto_arima
+) %>%
+    modeltime_calibrate(testing(splits))
 
 # * Forecast Test ----
 
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits)
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 
 # * Accuracy Test -----
 
+calibration_tbl %>%
+    modeltime_accuracy()
 
 # * Refit ----
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(
+        data = data_prepared_tbl
+    )
 
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = artifacts_list$data$forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast(
+        .conf_interval_alpha = 0.05
+    )
 
 # 4.0 STRENGTHS & WEAKNESSES ----
 # ARIMA is a simple algorithm that relies on Linear Regression

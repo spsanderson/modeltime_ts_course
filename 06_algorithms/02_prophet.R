@@ -46,15 +46,42 @@ splits %>%
 
 # * Modeltime Model ----
 
+?prophet_reg
 
+model_fit_prophet <- prophet_reg(
+    changepoint_num = 25,
+    changepoint_range = 0.8,
+    seasonality_yearly = TRUE
+) %>%
+    set_engine("prophet") %>%
+    fit(
+        data = training(splits)
+        , optins_trans ~ optin_time
+    )
+
+modeltime_table(
+    model_fit_prophet
+) %>%
+    modeltime_calibrate(new_data = testing(splits)) %>%
+    modeltime_forecast(
+        new_data = testing(splits)
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 
 # 2.0 PROPHET CONCEPTS ----
 
 # * Extract model ----
+prophet_model <- model_fit_prophet$fit$models$model_1
 
-
+prophet_fcst <- predict(prophet_model, 
+                        newdata = training(splits) %>%
+                            rename(ds = 1, y = 2))
 
 # * Visualize prophet model ----
+
+plot(prophet_model, prophet_fcst) +
+    add_changepoints_to_plot(prophet_model)
 
 
 

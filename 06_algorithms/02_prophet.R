@@ -51,7 +51,8 @@ splits %>%
 model_fit_prophet <- prophet_reg(
     changepoint_num = 25,
     changepoint_range = 0.8,
-    seasonality_yearly = TRUE
+    seasonality_yearly = TRUE,
+    seasonality_weekly = TRUE
 ) %>%
     set_engine("prophet") %>%
     fit(
@@ -84,28 +85,68 @@ plot(prophet_model, prophet_fcst) +
     add_changepoints_to_plot(prophet_model)
 
 
-
 # * Visualize Additive Components ----
-
+prophet_plot_components(prophet_model, prophet_fcst)
 
 
 # 3.0 XREGS ----
 
 # * Model ----
 
+model_fit_prophet_xregs <- prophet_reg(
+    seasonality_yearly = TRUE
+) %>%
+    set_engine("prophet") %>%
+    fit(
+        optins_trans ~ optin_time + lab_event,
+        data = training(splits)
+    )
 
 
 # * Calibration ----
 
+calibration_tbl <- modeltime_table(
+    model_fit_prophet,
+    model_fit_prophet_xregs
+) %>%
+    modeltime_calibrate(testing(splits))
 
 
 # * Forecast Test ----
 
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast(
+        .conf_interval_show = FALSE
+    )
 
 
 # * Accuracy Test ----
 
+calibration_tbl %>%
+    modeltime_accuracy()
 
 
 # * Refit ----
 
+calibration_tbl %>%
+    modeltime_refit(
+        data = data_prepared_tbl
+    ) %>%
+    modeltime_forecast(
+        new_data = artifacts_list$data$forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast(.conf_interval_show = FALSE)
+
+
+# 4.0 Saving ----
+
+model_fit_best_prophet <- calibration_tbl %>%
+    slice(2) %>%
+    pluck(".model", 1)
+
+write_rds(model_fit_best_prophet, "00_models/model_fit_best_prophet.RDS")

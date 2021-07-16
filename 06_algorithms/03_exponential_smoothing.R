@@ -53,8 +53,21 @@ train_tbl <- training(splits) %>%
 
 # * ETS Model ----
 
+?exp_smoothing
+model_fit_ets <- exp_smoothing() %>%
+    set_engine("ets") %>%
+    fit(optins_trans ~ optin_time, data = training(splits))
+
 
 # * Modeltime ----
+modeltime_table(model_fit_ets) %>%
+    modeltime_calibrate(testing(splits)) %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+
 
 
 
@@ -65,9 +78,25 @@ train_tbl <- training(splits) %>%
 # - Does not support XREGS
 
 # * TBATS Model ----
-
+model_fit_tbats <- seasonal_reg(
+    seasonal_period_1 = 7,
+    seasonal_period_2 = 30,
+    seasonal_period_3 = 365
+) %>%
+    set_engine("tbats") %>%
+    fit(optins_trans ~ optin_time, training(splits))
 
 # * Modeltime ----
+modeltime_table(
+    model_fit_ets,
+    model_fit_tbats
+) %>%
+    modeltime_calibrate(new_data = testing(splits)) %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 
 
 # SEASONAL DECOMPOSITION ----

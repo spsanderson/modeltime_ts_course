@@ -135,33 +135,44 @@ model_fit_stlm_arima_xregs <- seasonal_reg(
     set_engine("stlm_arima") %>%
     fit(optins_trans ~ optin_time + lab_event, data = training(splits))
 
+# Evaluation ----
+
 # * Modeltime ----
-modeltime_table(
+model_tbl <- modeltime_table(
     model_fit_ets,
     model_fit_tbats,
     model_fit_stlm_ets,
     model_fit_stlm_arima,
     model_fit_stlm_arima_xregs
-) %>%
-    modeltime_calibrate(new_data = testing(splits)) %>%
-    modeltime_forecast(
-        new_data = testing(splits)
-        , actual_data = data_prepared_tbl
-    ) %>%
-    plot_modeltime_forecast()
-
-
-# EVALUATION ----
+) 
 
 # * Calibration ----
-
+calibration_tbl <- model_tbl %>%
+    modeltime_calibrate(new_data = testing(splits))
 
 # * Forecast Test ----
-
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast(.conf_interval_show = FALSE)
 
 # * Accuracy Test ----
-
+calibration_tbl %>%
+    modeltime_accuracy()
 
 # * Refit ----
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data = data_prepared_tbl)
 
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = artifacts_list$data$forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast(.conf_interval_show = FALSE)
 
+# Saving ----
+calibration_tbl %>%
+    write_rds("00_models/calibrattion_tbl_ets_tbats_stlm.RDS")

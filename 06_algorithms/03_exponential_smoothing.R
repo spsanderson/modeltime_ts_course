@@ -69,8 +69,6 @@ modeltime_table(model_fit_ets) %>%
     plot_modeltime_forecast()
 
 
-
-
 # TBATS ----
 # - Multiple Seasonality Model
 # - Extension of ETS for complex seasonality
@@ -111,13 +109,46 @@ modeltime_table(
 
 
 # * STLM ETS Model ----
+model_fit_stlm_ets <- seasonal_reg(
+    seasonal_period_1 = 7,
+    seasonal_period_2 = 30,
+    seasonal_period_3 = 364 / 2
+) %>%
+    set_engine("stlm_ets") %>%
+    fit(optins_trans ~ optin_time, data = training(splits))
 
 
 # * STLM ARIMA Model ----
+model_fit_stlm_arima <- seasonal_reg(
+    seasonal_period_1 = 7,
+    seasonal_period_2 = 30,
+    seasonal_period_3 = 364/2
+) %>%
+    set_engine("stlm_arima") %>%
+    fit(optins_trans ~ optin_time, data = training(splits))
 
+model_fit_stlm_arima_xregs <- seasonal_reg(
+    seasonal_period_1 = 7,
+    seasonal_period_2 = 30,
+    seasonal_period_3 = 364/2
+) %>%
+    set_engine("stlm_arima") %>%
+    fit(optins_trans ~ optin_time + lab_event, data = training(splits))
 
 # * Modeltime ----
-
+modeltime_table(
+    model_fit_ets,
+    model_fit_tbats,
+    model_fit_stlm_ets,
+    model_fit_stlm_arima,
+    model_fit_stlm_arima_xregs
+) %>%
+    modeltime_calibrate(new_data = testing(splits)) %>%
+    modeltime_forecast(
+        new_data = testing(splits)
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 
 
 # EVALUATION ----

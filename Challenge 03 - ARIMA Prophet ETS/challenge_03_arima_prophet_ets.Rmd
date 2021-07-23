@@ -126,15 +126,17 @@ Let's start with a Basic Auto ARIMA:
 model_fit_1_arima_basic <- arima_reg() %>%
     set_engine("auto_arima") %>%
     fit(revenue ~ purchased_at, data = training(splits))
+
+model_fit_1_arima_basic
 ```
 
 Questions:
 - What are the ARIMA orders? 0,1,1
-    - How many lags were used? 1
-    - Was differencing performed? Yes 1
-    - Were any lagged error features used?
+    - How many lags were used? 0
+    - Was differencing performed? 1
+    - Were any lagged error features used? 1
 - Did modeltime auto-generate a frequency for ARIMA? Yes
-- Is this a seasonal model? Yes
+- Is this a seasonal model? No
 
 ### Model 2 - Add Product Events
 
@@ -145,9 +147,9 @@ Next, repeat the model this time adding events:
 - Print the output to the screen. 
 
 Questions:
-- Has the AIC improved? 
+- Has the AIC improved? Yes
 - What coefficients do you see in your model?
-- Is this a seasonal model?
+- Is this a seasonal model? No
 
 ```{r, message = T}
 # CODE HERE
@@ -155,6 +157,8 @@ model_fit_2_arima_xregs <- arima_reg() %>%
     set_engine("auto_arima") %>%
     fit(revenue ~ purchased_at + event_november_sale + event_product_launch, 
         data = training(splits))
+
+model_fit_2_arima_xregs
 ```
 
 ### Model 3 - Add Seasonality + Product Events
@@ -183,7 +187,7 @@ Make your 3rd Auto ARIMA model the same as your 2nd model (include events in you
 - Store as `model_fit_3_arima_sarimax`
 
 Question:
-- Is this a seasonal model?
+- Is this a seasonal model? No
 
 
 ```{r}
@@ -192,6 +196,8 @@ model_fit_3_arima_sarimax <- arima_reg(seasonal_period = 4) %>%
     set_engine("auto_arima") %>%
     fit(revenue ~ purchased_at + event_november_sale + event_product_launch, 
         data = training(splits))
+
+model_fit_3_arima_sarimax
 
 ```
 
@@ -208,8 +214,8 @@ We can force seasonality using Regular (non-auto) ARIMA.
 - Store your model as `model_fit_4_arima_sarimax`
 
 Questions:
-- Is this a seasonal model?
-- Does adding the seasonality seem to improve the ARIMA model?
+- Is this a seasonal model? Yes
+- Does adding the seasonality seem to improve the ARIMA model? No
 
 ```{r}
 # CODE HERE
@@ -225,6 +231,8 @@ model_fit_4_arima_sarimax <- arima_reg(
     set_engine("arima") %>%
     fit(revenue ~ purchased_at + event_november_sale + event_product_launch, 
         data = training(splits))
+
+model_fit_4_arima_sarimax
     
 ```
 
@@ -240,17 +248,21 @@ Last try to improve the Auto ARIMA model. Let's add a fourier series at period =
 - Print the model 
 
 Questions:
-- Does the added fourier term seem to improve the AIC of the model?
+- Does the added fourier term seem to improve the AIC of the model? Yes
 
 ```{r}
 # CODE HERE
 model_fit_5_arima_xreg_fourier <- arima_reg() %>%
     set_engine("auto_arima") %>%
     fit(
-        revenue ~ purchased_at + event_november_sale + event_product_launch +
-            fourier_vec(revenue, 4),
+        revenue ~ purchased_at 
+        + event_november_sale 
+        + event_product_launch 
+        + fourier_vec(revenue, 4),
         data = training(splits)
     )
+
+model_fit_5_arima_xreg_fourier
 ```
 
 ### Investigate - Modeltime Workflow
@@ -270,6 +282,8 @@ model_tbl_arima <- modeltime_table(
     model_fit_4_arima_sarimax,
     model_fit_5_arima_xreg_fourier
 )
+
+model_tbl_arima
 ```
 
 
@@ -281,6 +295,8 @@ Use `modeltime_calibrate()` to calibrate your models on the testing split.
 # CODE HERE
 calibration_tbl <- model_tbl_arima %>%
     modeltime_calibrate(testing(splits))
+
+calibration_tbl
 ```
 
 #### Test Accuracy
@@ -340,6 +356,11 @@ First, train a basic `prophet` model:
 
 ```{r}
 # CODE HERE
+model_fit_6_prophet_basic <- prophet_reg() %>%
+    set_engine("prophet") %>%
+    fit(revenue ~ purchased_at, data = training(splits))
+
+model_fit_6_prophet_basic
 ```
 
 ### Model 7 - Turn on yearly seasonality
@@ -348,6 +369,11 @@ Next, let's try toggling yearly seasonality on. Make a new model called `model_f
 
 ```{r}
 # CODE HERE
+model_fit_7_prophet_yearly <- prophet_reg(seasonality_yearly = TRUE) %>%
+    set_engine("prophet") %>%
+    fit(revenue ~ purchased_at, data = training(splits))
+
+model_fit_7_prophet_yearly
 ```
 
 ### Model 8 - Product Events
@@ -356,6 +382,14 @@ Let's try one without yearly seasonality but now adding events. Make `model_fit_
 
 ```{r}
 # CODE HERE
+model_fit_8_events <- prophet_reg() %>%
+    set_engine("prophet") %>%
+    fit(revenue ~ purchased_at
+        + event_november_sale
+        + event_product_launch
+        , data = training(splits))
+
+model_fit_8_events
 ```
 
 ### Model 9 - Events + Fourier Series

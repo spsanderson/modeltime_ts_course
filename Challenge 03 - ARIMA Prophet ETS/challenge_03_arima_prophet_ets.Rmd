@@ -398,6 +398,17 @@ Let's try one more model that includes the events and a fourier series. Add a `f
 
 ```{r}
 # CODE HERE
+model_fit_9_prophet_events_fourier <- prophet_reg() %>%
+    set_engine("prophet") %>%
+    fit(
+        revenue ~ purchased_at
+        + event_november_sale
+        + event_product_launch
+        + fourier_vec(purchased_at, period = 4)
+        , data = training(splits)
+    )
+
+model_fit_9_prophet_events_fourier
 ```
 
 ### Investigate - Modeltime Workflow
@@ -410,6 +421,14 @@ Create a modeltime table with each of the prophet models 6-9 in the table. Store
 
 ```{r}
 # CODE HERE
+model_tbl_prophet <- modeltime_table(
+    model_fit_6_prophet_basic,
+    model_fit_7_prophet_yearly,
+    model_fit_8_events,
+    model_fit_9_prophet_events_fourier
+)
+
+model_tbl_prophet
 ```
 
 
@@ -419,6 +438,10 @@ Next, calibrate the models using your testing set.
 
 ```{r}
 # CODE HERE
+calibration_tbl <- model_tbl_prophet %>%
+    modeltime_calibrate(new_data = testing(splits))
+
+calibration_tbl
 ```
 
 #### Test Accuracy
@@ -427,6 +450,8 @@ Calculate the accuracy with `modeltime_accuracy()`.
 
 ```{r}
 # CODE HERE
+calibration_tbl %>%
+    modeltime_accuracy()
 ```
 
 #### Test Forecast
@@ -435,6 +460,12 @@ Finally, forecast the calibrated models on the testing data using `modeltime_for
 
 ```{r}
 # CODE HERE
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 ```
 
 ### Prophet Forecast Review
@@ -476,6 +507,11 @@ Question:
 
 ```{r}
 # CODE HERE
+model_fit_10_ets <- exp_smoothing() %>%
+    set_engine("ets") %>%
+    fit(revenue ~ purchased_at, training(splits))
+
+model_fit_10_ets
 ```
 
 
@@ -486,6 +522,14 @@ Next, let's make a TBATS model. The seasonality we'll use is `seasonal_period_1 
 
 ```{r}
 # CODE HERE
+model_fit_11_tbats <- seasonal_reg(
+    seasonal_period_1 = 4,
+    seasonal_period_2 = 12
+)  %>%
+    set_engine("tbats") %>%
+    fit(revenue ~ purchased_at, training(splits))
+
+model_fit_11_tbats
 ```
 
 
@@ -499,6 +543,12 @@ Create a modeltime table with each of the exponential smoothing models 10-11 in 
 
 ```{r}
 # CODE HERE
+model_tbl_exp_smooth <- modeltime_table(
+    model_fit_10_ets,
+    model_fit_11_tbats
+)
+
+model_tbl_exp_smooth
 ```
 
 #### Calibration Table
@@ -507,6 +557,10 @@ Next, calibrate the models using your testing set.
 
 ```{r}
 # CODE HERE
+calibration_tbl <- model_tbl_exp_smooth %>%
+    modeltime_calibrate(testing(splits))
+
+calibration_tbl
 ```
 
 #### Test Accuracy
@@ -515,6 +569,8 @@ Calculate the accuracy with `modeltime_accuracy()`.
 
 ```{r}
 # CODE HERE
+calibration_tbl %>%
+    modeltime_accuracy()
 ```
 
 #### Test Forecast
@@ -523,6 +579,12 @@ Finally, forecast the calibrated models on the testing data using `modeltime_for
 
 ```{r}
 # CODE HERE
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 ```
 ### Exponential Smoothing Forecast Review
 

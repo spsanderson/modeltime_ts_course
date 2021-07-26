@@ -634,6 +634,13 @@ Store the combined modeltime tables as `model_tbl`
 
 ```{r}
 # CODE HERE
+model_tbl <- combine_modeltime_tables(
+    model_tbl_arima,
+    model_tbl_prophet,
+    model_tbl_exp_smooth
+)
+
+model_tbl
 ```
 
 As a precautionary measure, please refit the models using `modeltime_refit()`. This prevents models that can go bad over time because of software changes. 
@@ -654,6 +661,10 @@ Use testing data to calibrate the model:
 
 ```{r}
 # CODE HERE
+calibration_tbl <- model_tbl %>%
+    modeltime_calibrate(testing(splits))
+
+calibration_tbl
 ```
 
 ### Calculate the Accuracy
@@ -662,6 +673,8 @@ Use `modeltime_accuracy()` to calculate the accuracy metrics.
 
 ```{r}
 # CODE HERE
+calibration_tbl %>%
+    modeltime_accuracy()
 ```
 
 ### Visualize the Model Forecast
@@ -673,6 +686,12 @@ Use `modeltime_accuracy()` to calculate the accuracy metrics.
 
 ```{r}
 # CODE HERE
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits)
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 ```
 
 
@@ -684,6 +703,8 @@ Use `modeltime_accuracy()` to calculate the accuracy metrics.
 
 ```{r}
 # CODE HERE
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data_prepared_tbl)
 ```
 
 ### Forecast Future 
@@ -694,6 +715,12 @@ Use `modeltime_accuracy()` to calculate the accuracy metrics.
 
 ```{r}
 # CODE HERE
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 ```
 
 
@@ -708,6 +735,18 @@ Apply the inversion to the forecast plot:
 
 ```{r}
 # CODE HERE
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    mutate(across(.value:.conf_hi, .fns = ~ standardize_inv_vec(
+        x = .,
+        mean = std_mean,
+        sd = std_sd
+    ))) %>%
+    mutate(across(.value:.conf_hi, .fns = exp)) %>%
+    plot_modeltime_forecast()
 ```
 
 # Forecast Review

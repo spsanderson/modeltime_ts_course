@@ -1,0 +1,779 @@
+---
+title: "Challenge 03: Revenue Forecasting with ARIMA, Prophet, & ETS/TBATS"
+subtitle: "DS4B 203-R, Time Series Forecasting for Business"
+author: "Business Science"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = TRUE,
+    message = T,
+    warning = T,
+    paged.print = FALSE, 
+    # This should allow Rmarkdown to locate the data
+    root.dir = rprojroot::find_rstudio_root_file()
+)
+```
+
+# Challenge Objective
+
+Your goal is to perform an 8-week revenue forecast using __ARIMA, Prophet, Exponential Smoothing, and TBATS models.__ You will create 11 models that experiment with different parameter settings and feature engineering. 
+
+
+# Libraries
+
+```{r, message=F, warning=F}
+# Modeling
+library(tidymodels)
+library(modeltime)
+
+# Core
+library(tidyverse)
+library(timetk)
+library(lubridate)
+```
+
+
+# Picking Up from Challenge 02
+
+We'll read in the artifacts that were produced in Challenge 02. 
+
+## Challenge 2 Artifacts
+
+First, import the `challenge_02_artifacts`, and let's recap where we are picking up from.
+
+```{r}
+challenge_02_artifacts  <- read_rds("challenge_03_data_checkpoints/challenge_02_artifacts.rds")
+```
+
+Interactively explore the artifacts to refresh your memory from Challenge 02. 
+
+```{r, eval=FALSE}
+challenge_02_artifacts %>% View("artifacts")
+```
+
+
+## Data Preparation
+
+Load the artifacts. 
+
+```{r}
+# Processed Data
+data_prepared_tbl <- challenge_02_artifacts$processed_data$data_prepared_tbl
+forecast_tbl      <- challenge_02_artifacts$processed_data$forecast_tbl
+
+# Train/Test Splits
+splits            <- challenge_02_artifacts$train_test_splits$splits
+
+# Linear Regression Model
+workflow_fit_lm_1_spline <- challenge_02_artifacts$trained_models$workflow_fit_lm_1_spline
+
+# Inversion Parameters
+std_mean <- challenge_02_artifacts$transformation_params$standardize_params$std_mean
+std_sd   <- challenge_02_artifacts$transformation_params$standardize_params$std_sd
+```
+
+# Train/Test Splits
+
+The `splits` object contains your train/test split. We'll be modeling with it. 
+
+- Extract the training data using `training()` function. 
+
+```{r}
+training(splits)
+```
+
+Visualize the train/test split.
+
+- Use `tk_time_series_cv_plan()` to convert the `splits` object to a data frame that can be plotted
+- Plot the train/test split using `plot_time_series_cv_plan()`
+
+```{r}
+splits %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(purchased_at, revenue)
+```
+
+
+# Modeling 
+
+Now that we have a feel for the training and testing data, let's dive into modeling. There are 3 Sections:
+
+- __ARIMA:__ Models 1-5
+- __Prophet:__ Models 6-9
+- __Exponential Smoothing & TBATS:__  Models 10-11
+
+## ARIMA
+
+We'll start by modeling the revenue with ARIMA. 
+
+### Model 1 - Basic Auto ARIMA
+
+Let's start with a Basic Auto ARIMA:
+
+- Start with `arima_reg()` to begin the specification
+- Pipe into `set_engine()`. Specify "auto_arima" as the engine. 
+- Pipe into `fit()`:
+    - Use formula = `revenue ~ purchased_at`
+    - Set `data = training(splits)`
+- Store the output as `model_fit_1_arima_basic`
+- Print the output and check out the parameters & AIC.
+
+```{r, message = T}
+model_fit_1_arima_basic <- arima_reg() %>%
+    set_engine("auto_arima") %>%
+    fit(revenue ~ purchased_at, data = training(splits))
+
+model_fit_1_arima_basic
+```
+
+Questions:
+- What are the ARIMA orders? 
+    - How many lags were used?
+    - Was differencing performed?
+    - Were any lagged error features used?
+- Did modeltime auto-generate a frequency for ARIMA?
+- Is this a seasonal model?
+
+### Model 2 - Add Product Events
+
+Next, repeat the model this time adding events:
+
+- Modify the previous formula to include `event_november_sale` and `event_product_launch`
+- Store the object as `model_fit_2_arima_xregs`
+- Print the output to the screen. 
+
+Questions:
+- Has the AIC improved? 
+- What coefficients do you see in your model?
+- Is this a seasonal model?
+
+```{r, message = T}
+model_fit_2_arima_xregs <- arima_reg() %>%
+    set_engine("auto_arima") %>%
+    fit(revenue ~ purchased_at 
+        + event_november_sale
+        + event_product_launch, 
+        data = training(splits))
+
+model_fit_2_arima_xregs
+```
+
+### Model 3 - Add Seasonality + Product Events
+
+Use `plot_acf_diagnostics()` to inspect the ACF of your ARIMA model as follows:
+
+- If a Difference was used in your ARIMA models, then apply differencing using `diff_vec()`
+
+Question:
+- Do you see any spikes in ACF Lags?
+- Do you see any spikes in PACF Lags?
+
+```{r, message = T}
+training(splits) %>%
+    plot_acf_diagnostics(purchased_at, .value = diff_vec(revenue))
+```
+
+
+Make your 3rd Auto ARIMA model the same as your 2nd model (include events in your model formula). This time:
+
+- Set `arima_reg(seasonal_period = 4)` to capture the ACF Lag 4 as a seasonality
+- Store as `model_fit_3_arima_sarimax`
+
+Question:
+- Is this a seasonal model?
+
+
+```{r}
+model_fit_3_arima_sarimax <- arima_reg(
+        seasonal_period = 4
+    ) %>%
+    set_engine("auto_arima") %>%
+    fit(revenue ~ purchased_at 
+        + event_november_sale
+        + event_product_launch,  
+        data = training(splits))
+
+model_fit_3_arima_sarimax
+```
+
+### Model 4 - Force Seasonality w/ Regular ARIMA
+
+We can force seasonality using Regular (non-auto) ARIMA.
+
+- Start with `arima_reg()`:
+    - Set `seasonal_period = 4` to force a 4-period (monthly) seasonality
+    - Set your non seasonal arima parameters to (2,1,2) 
+    - Set your seasonal arima parameters to (1,0,1)
+- Set your engine to `"arima"`
+- Use the formula with events added. 
+- Store your model as `model_fit_4_arima_sarimax`
+
+Questions:
+- Is this a seasonal model?
+- Does adding the seasonality seem to improve the ARIMA model?
+
+```{r}
+model_fit_4_arima_sarimax <- arima_reg(
+        seasonal_period          = 4,
+        # Non-Seasonal Terms
+        non_seasonal_ar          = 2,
+        non_seasonal_differences = 1, 
+        non_seasonal_ma = 2, 
+        # Seasonal Terms
+        seasonal_ar = 1, 
+        seasonal_differences = 0, 
+        seasonal_ma = 1
+    ) %>%
+    set_engine("arima") %>%
+    fit(revenue ~ purchased_at 
+        + event_november_sale
+        + event_product_launch, 
+        data = training(splits))
+
+model_fit_4_arima_sarimax
+```
+
+### Model 5 - Use Fourier Terms + Product Events instead of Seasonality
+
+Last try to improve the Auto ARIMA model. Let's add a fourier series at period = 4 to try to capture the strong ACF in Lag 4.
+
+- Start with `arima_reg()`
+- Pipe into `set_engine()` using "auto_arima"
+- Use a formula that includes events
+- Add to your forumla a `fourier_vec()` at `period = 4`. 
+- Store your model as `model_fit_5_arima_xreg_fourier`
+- Print the model 
+
+Questions:
+- Does the added fourier term seem to improve the AIC of the model?
+
+```{r}
+model_fit_5_arima_xreg_fourier <- arima_reg() %>%
+    set_engine("auto_arima") %>%
+    fit(revenue ~ purchased_at 
+        + fourier_vec(purchased_at, period = 4)
+        + event_november_sale
+        + event_product_launch,  
+        data = training(splits))
+
+model_fit_5_arima_xreg_fourier
+```
+
+### Investigate - Modeltime Workflow
+
+Next, we need to investigate our ARIMA models. 
+
+#### Model Table
+
+Use `modeltime_table()` to consolidate Models 1 - 5 (ARIMA models). Save the modeltime table as `model_tbl_arima`.
+
+```{r}
+model_tbl_arima <- modeltime_table(
+    model_fit_1_arima_basic,
+    model_fit_2_arima_xregs,
+    model_fit_3_arima_sarimax,
+    model_fit_4_arima_sarimax,
+    model_fit_5_arima_xreg_fourier
+)
+
+model_tbl_arima
+```
+
+
+#### Calibration Table
+
+Use `modeltime_calibrate()` to calibrate your models on the testing split. 
+
+```{r}
+calibration_tbl <- model_tbl_arima %>%
+    modeltime_calibrate(testing(splits))
+
+calibration_tbl
+```
+
+#### Test Accuracy
+
+Use `modeltime_accuracy()` to calculate the test accuracy. 
+
+```{r}
+calibration_tbl %>% 
+    modeltime_accuracy() 
+```
+
+#### Test Forecast
+
+Make a test forecast using `modeltime_forecast()` and `plot_modeltime_forecast()`. Use the testing split and the `data_prepared_tbl`.
+
+```{r}
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>% 
+    plot_modeltime_forecast()
+```
+
+### ARIMA Forecast Review
+
+- Which ARIMA forecasts performed the best on the test data set?
+    - Which ARIMA forecasts had the lowest MAE / RMSE?
+    - Which ARIMA forecasts had the highest variance explained
+- How did the forecasts do predicting the global trend?
+- How did the forecasts do predicting the local trend?
+
+```{r}
+# Checkpoint data
+# model_tbl_arima %>% write_rds("challenge_03_data_checkpoints/model_tbl_arima.rds")
+model_tbl_arima <- read_rds("challenge_03_data_checkpoints/model_tbl_arima.rds")
+model_tbl_arima
+```
+
+
+
+## Prophet 
+
+Next, let's experiment with the prophet algorithm.
+
+### Model 6 - Basic Prophet 
+
+First, train a basic `prophet` model:
+
+- Start with `prophet_reg()`. Use the default parameters. 
+- Set the engine to "prophet"
+- Fit the model to the training data using `revenue ~ purchased_at`
+- Store the model as `model_fit_6_prophet_basic`
+
+
+```{r}
+model_fit_6_prophet_basic <- prophet_reg() %>%
+    set_engine("prophet") %>%
+    fit(revenue ~ purchased_at, data = training(splits))
+
+model_fit_6_prophet_basic
+```
+
+### Model 7 - Turn on yearly seasonality
+
+Next, let's try toggling yearly seasonality on. Make a new model called `model_fit_7_prophet_yearly` with `seasonality_yearly = TRUE`.
+
+```{r}
+model_fit_7_prophet_yearly <- prophet_reg(
+    seasonality_yearly = TRUE
+) %>%
+    set_engine("prophet") %>%
+    fit(revenue ~ purchased_at, data = training(splits))
+
+model_fit_7_prophet_yearly
+```
+
+### Model 8 - Product Events
+
+Let's try one without yearly seasonality but now adding events. Make `model_fit_8_prophet_events` using the default settings for `prophet_reg()` and updating the fitting formula to include `event_november_sale` and `event_product_launch`. 
+
+```{r}
+model_fit_8_prophet_events <- prophet_reg() %>%
+    set_engine("prophet") %>%
+    fit(revenue ~ purchased_at 
+        + event_november_sale
+        + event_product_launch, 
+        data = training(splits))
+
+model_fit_8_prophet_events
+```
+
+### Model 9 - Events + Fourier Series
+
+Let's try one more model that includes the events and a fourier series. Add a `fourier_vec()` with `period = 4`. Save this model as `model_fit_9_prophet_events_fourier`.
+
+```{r}
+model_fit_9_prophet_events_fourier <- prophet_reg() %>%
+    set_engine("prophet") %>%
+    fit(revenue ~ purchased_at 
+        + fourier_vec(purchased_at, period = 4)
+        + event_november_sale
+        + event_product_launch, 
+        data = training(splits))
+
+model_fit_9_prophet_events_fourier
+```
+
+### Investigate - Modeltime Workflow
+
+Now let's check out the results. 
+
+#### Model Table
+
+Create a modeltime table with each of the prophet models 6-9 in the table. Store as `model_tbl_prophet`.
+
+```{r}
+model_tbl_prophet <- modeltime_table(
+    model_fit_6_prophet_basic,
+    model_fit_7_prophet_yearly,
+    model_fit_8_prophet_events,
+    model_fit_9_prophet_events_fourier
+)
+
+model_tbl_prophet
+```
+
+
+#### Calibration Table
+
+Next, calibrate the models using your testing set. 
+
+```{r}
+calibration_tbl <- model_tbl_prophet %>%
+    modeltime_calibrate(testing(splits))
+
+calibration_tbl
+```
+
+#### Test Accuracy
+
+Calculate the accuracy with `modeltime_accuracy()`.
+
+```{r}
+calibration_tbl %>% modeltime_accuracy()
+```
+
+#### Test Forecast
+
+Finally, forecast the calibrated models on the testing data using `modeltime_forecast()` and `plot_modeltime_forecast()`.
+
+```{r}
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>% 
+    plot_modeltime_forecast()
+```
+
+### Prophet Forecast Review
+
+- Which Prophet forecasts performed the best on the test data set?
+    - Which Prophet forecasts had the lowest MAE / RMSE?
+    - Which Prophet forecasts had the highest variance explained
+- How did the forecasts do predicting the global trend?
+- How did the forecasts do predicting the local trend?
+
+```{r}
+# Checkpoint data
+# model_tbl_prophet %>% write_rds("challenge_03_data_checkpoints/model_tbl_prophet.rds")
+model_tbl_prophet <- read_rds("challenge_03_data_checkpoints/model_tbl_prophet.rds")
+model_tbl_prophet
+```
+
+## Exponential Smoothing
+
+Now let's try models that incorporate exponential smoothing. 
+
+### Model 10 - ETS
+
+The first model we'll experiment with is the automated "ETS" model:
+
+- Start with `exp_smoothing()`
+- Set the engine to "ets"
+- Fit the model to the training data using a formula `revenue ~ purchased_at`
+- Save the model as `model_fit_10_ets`
+
+Question:
+
+- Review the ETS parameters:
+    - Is this an exponentially smoothed error model?
+    - Is this a trend model
+    - Is this a seasonal model?
+- How does the AIC compare to the AIC of the ARIMA model?
+
+
+```{r}
+model_fit_10_ets <- exp_smoothing() %>%
+    set_engine("ets") %>%
+    fit(revenue ~ purchased_at, training(splits))
+
+model_fit_10_ets
+```
+
+
+
+### Model 11 - TBATS
+
+Next, let's make a TBATS model. The seasonality we'll use is `seasonal_period_1 = 4` and `seasonal_period_2 = 13`.
+
+```{r}
+model_fit_11_tbats <- seasonal_reg(
+    seasonal_period_1 = 4,
+    seasonal_period_2 = 13
+) %>%
+    set_engine("tbats") %>%
+    fit(revenue ~ purchased_at, data = training(splits))
+
+model_fit_11_tbats
+```
+
+
+### Investigate - Modeltime  Workflow
+
+Now let's check out the results. 
+
+#### Model Table
+
+Create a modeltime table with each of the exponential smoothing models 10-11 in the table. Store as `model_tbl_exp_smooth`.
+
+```{r}
+model_tbl_exp_smooth <- modeltime_table(
+    model_fit_10_ets, 
+    model_fit_11_tbats
+) 
+
+model_tbl_exp_smooth
+```
+
+#### Calibration Table
+
+Next, calibrate the models using your testing set. 
+
+```{r}
+calibration_tbl <- model_tbl_exp_smooth %>%
+    modeltime_calibrate(testing(splits))
+
+calibration_tbl
+```
+
+#### Test Accuracy
+
+Calculate the accuracy with `modeltime_accuracy()`.
+
+```{r}
+calibration_tbl %>% modeltime_accuracy()
+```
+
+#### Test Forecast
+
+Finally, forecast the calibrated models on the testing data using `modeltime_forecast()` and `plot_modeltime_forecast()`.
+
+```{r}
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>% 
+    plot_modeltime_forecast()
+```
+### Exponential Smoothing Forecast Review
+
+- Which Exponential Smoothing forecasts performed the best on the test data set?
+    - Which Exponential Smoothing forecasts had the lowest MAE / RMSE?
+    - Which Exponential Smoothing forecasts had the highest variance explained
+- How did the forecasts do predicting the global trend?
+- How did the forecasts do predicting the local trend?
+
+```{r}
+# Checkpoint data
+# model_tbl_exp_smooth %>% write_rds("challenge_03_data_checkpoints/model_tbl_exp_smooth.rds")
+model_tbl_exp_smooth <- read_rds("challenge_03_data_checkpoints/model_tbl_exp_smooth.rds")
+model_tbl_exp_smooth
+```
+
+
+
+# Forecast Future Data
+
+Forecast the future.
+
+```{r}
+# Checkpoint data
+model_tbl_arima      <- read_rds("challenge_03_data_checkpoints/model_tbl_arima.rds")
+model_tbl_prophet    <- read_rds("challenge_03_data_checkpoints/model_tbl_prophet.rds")
+model_tbl_exp_smooth <- read_rds("challenge_03_data_checkpoints/model_tbl_exp_smooth.rds")
+```
+
+
+### Model Table
+
+Create a Modeltime Table from the 3 previous Modeltime Tables using a new function, `combine_modeltime_tables`.
+
+Use `?combine_modeltime_tables` to learn about how the function works.
+
+```{r, eval=FALSE}
+?combine_modeltime_tables
+```
+
+
+Use the function to combine the 3 previous modeltime tables into a single modeltime table. Combine these Modeltime Tables: 
+    - `model_tbl_arima`
+    - `model_tbl_prophet`
+    - `model_tbl_exp_smooth`
+Store the combined modeltime tables as `model_tbl`
+
+```{r}
+model_tbl <- combine_modeltime_tables(
+    model_tbl_arima,
+    model_tbl_prophet,
+    model_tbl_exp_smooth
+)
+
+model_tbl
+```
+
+
+As a precautionary measure, please refit the models using `modeltime_refit()`. This prevents models that can go bad over time because of software changes. 
+
+```{r}
+# Refitting makes sure your models work over time. 
+model_tbl <- model_tbl %>%
+    modeltime_refit(training(splits))
+```
+
+### Calibrate the Table
+
+Use testing data to calibrate the model:
+
+- Start with `model_tbl`
+- Use `modeltime_calibrate()` to calibrate the model using `testing(splits)` (out-of-sample data)
+- Store the result as `calibration_tbl`
+
+```{r}
+calibration_tbl <- model_tbl %>%
+    modeltime_calibrate(testing(splits))
+
+calibration_tbl
+```
+
+### Calculate the Accuracy
+
+Use `modeltime_accuracy()` to calculate the accuracy metrics.
+
+```{r}
+calibration_tbl %>% modeltime_accuracy()
+```
+
+### Visualize the Model Forecast
+
+- Use `modeltime_forecast()`:
+    - Set `new_data = testing(splits)`
+    - Set `actual_data = data_prepared_tbl`
+- Pipe the result into `plot_modeltime_forecast()`
+
+```{r}
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data    = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+```
+
+
+
+### Refit
+
+- Start with the `calibration_tbl`
+- Use `modeltime_refit()` refit the model on the `data_prepared_tbl` dataset
+
+```{r}
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data_prepared_tbl)
+
+refit_tbl
+```
+
+### Forecast Future 
+
+1. Start with `refit_tbl`
+2. Use `modeltime_forecast()` to forecast the `new_data = forecast_tbl`. Use `data_prepared_tbl` as the actual data. 
+3. Plot the forecast using `plot_modeltime_forecast()`
+
+```{r}
+refit_tbl %>%
+    modeltime_forecast(new_data    = forecast_tbl,
+                       actual_data = data_prepared_tbl) %>%
+    plot_modeltime_forecast()
+```
+
+
+
+## Invert Transformation
+
+Apply the inversion to the forecast plot:
+
+- Invert the standardization
+- Invert the log transformation
+
+
+```{r}
+refit_tbl %>%
+    modeltime_forecast(
+        new_data    = forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    
+    # Invert Transformation
+    mutate(across(.value:.conf_hi, .fns = ~ standardize_inv_vec(
+        x    = .,
+        mean = std_mean,
+        sd   = std_sd
+    ))) %>%
+    mutate(across(.value:.conf_hi, .fns = exp)) %>%
+    
+    plot_modeltime_forecast()
+```
+
+# Forecast Review
+
+- What do we think of these forecasts?
+- Which models had the best performance? Are there any similarities?
+- Were any forecasts inconsistent with your expectations? If so, why might this be?
+
+# BONUS - Comparing Linear Model to Prophet & ARIMA
+
+```{r}
+model_tbl <- modeltime_table(
+    model_fit_5_arima_xreg_fourier,
+    model_fit_9_prophet_events_fourier,
+    workflow_fit_lm_1_spline
+) %>%
+    modeltime_refit(data = training(splits))
+
+model_tbl
+```
+
+```{r}
+calibration_tbl <- model_tbl %>%
+    modeltime_calibrate(testing(splits))
+
+calibration_tbl
+```
+
+```{r}
+calibration_tbl %>% modeltime_accuracy()
+```
+
+```{r}
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+```
+
+
+```{r}
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data_prepared_tbl)
+
+refit_tbl
+```
+
+```{r}
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = forecast_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
+```
+

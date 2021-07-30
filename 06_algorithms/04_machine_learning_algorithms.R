@@ -141,10 +141,24 @@ calibrate_and_plot(
 #   - prophet_reg: uses a technique similar to mars for modeling trend component
 #   - prophet_boost: Uses prophet for trend, xgboost for features
 
+model_spec_mars <- mars(
+  mode = "regression"
+  , prod_degree = 2
+  , num_terms = 10
+) %>%
+  set_engine("earth", endspan = nrow(testing(splits)))
 
 
 # Simple Numeric
+wflw_fit_mars_simple <- workflow() %>%
+  add_model(model_spec_mars) %>%
+  add_formula(optins_trans ~ as.numeric(optin_time)) %>%
+  fit(training(splits))
 
+calibrate_and_plot(
+  wflw_fit_mars_simple
+  , type = "testing"
+)
 
 # Spline
 

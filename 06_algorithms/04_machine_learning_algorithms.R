@@ -143,8 +143,8 @@ calibrate_and_plot(
 
 model_spec_mars <- mars(
   mode = "regression"
-  , prod_degree = 2
   , num_terms = 10
+  , prod_degree = 2
 ) %>%
   set_engine("earth", endspan = nrow(testing(splits)))
 
@@ -161,13 +161,24 @@ calibrate_and_plot(
 )
 
 # Spline
+wflw_fit_mars_spline <- workflow() %>%
+  add_model(model_spec_mars) %>%
+  add_recipe(recipe_spec_1_spline) %>%
+  fit(training(splits))
 
 
 # Lag
-
+wflw_fit_mars_lag <- workflow() %>%
+  add_model(model_spec_mars) %>%
+  add_recipe(recipe_spec_2_lag) %>%
+  fit(training(splits))
 
 # Calibrate & Plot
-
+calibrate_and_plot(
+  wflw_fit_mars_simple,
+  wflw_fit_mars_spline,
+  wflw_fit_mars_lag
+)
 
 # 3.0 SVM POLY ----
 # Strengths: Well-rounded algorithm

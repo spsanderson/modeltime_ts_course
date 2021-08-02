@@ -335,13 +335,36 @@ calibrate_and_plot(
 
 # Implementation
 
-# Spline
+model_spec_rf <- rand_forest(
+  mode = "regression",
+  mtry = 25,
+  trees = 1000,
+  min_n = 15
+) %>%
+  set_engine("randomForest")
 
+# Spline
+set.seed(123)
+wflw_fit_rf_spline <- workflow() %>%
+  add_model(model_spec_rf) %>%
+  add_recipe(recipe_spec_1_spline) %>%
+  fit(training(splits))
 
 # Lag
+set.seed(123)
+wflw_fit_rf_lag <- workflow() %>%
+  add_model(model_spec_rf) %>%
+  add_recipe(recipe_spec_2_lag) %>%
+  fit(training(splits))
 
 
 # Calibrate & Plot
+
+calibrate_and_plot(
+  wflw_fit_rf_spline,
+  wflw_fit_rf_lag,
+  type = "testing"
+)
 
 # 7.0 XGBOOST ----
 # - Strengths: Best for seasonality & complex patterns

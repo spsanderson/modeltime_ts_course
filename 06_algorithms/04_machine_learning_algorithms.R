@@ -376,14 +376,36 @@ calibrate_and_plot(
 
 # Implementation
 
-# Spline
+model_spec_boost <- boost_tree(
+    mode  = "regression",
+    mtry  = round(sqrt(ncol(training(splits)) - 1), 0),
+    trees = round(sqrt(nrow(training(splits)) - 1), 0),
+    min_n = round(sqrt(ncol(training(splits)) - 1), 0),
+    tree_depth = round(sqrt(ncol(training(splits)) - 1), 0),
+    learn_rate = 0.3,
+    loss_reduction = 0.01
+  ) %>%
+  set_engine("xgboost")
 
+# Spline
+set.seed(123)
+wflw_fit_xgboost_spline <- workflow() %>%
+  add_model(model_spec_boost) %>%
+  add_recipe(recipe_spec_1_spline) %>%
+  fit(training(splits))
 
 # Lag
-
+set.seed(123)
+wflw_fit_xgboost_lag <- workflow() %>%
+  add_model(model_spec_boost) %>%
+  add_recipe(recipe_spec_2_lag) %>%
+  fit(training(splits))
 
 # Calibrate & Plot
-
+calibrate_and_plot(
+  wflw_fit_xgboost_spline,
+  wflw_fit_xgboost_lag
+)
 
 # 8.0 CUBIST ----
 # - Like XGBoost, but the terminal (final) nodes are fit using linear regression

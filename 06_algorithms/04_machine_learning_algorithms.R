@@ -486,7 +486,12 @@ calibrate_and_plot(
 
 # Base Model
 
-model_spec_nnetar <- nnetar_reg() %>%
+model_spec_nnetar <- nnetar_reg(
+  non_seasonal_ar = 1
+  , seasonal_ar   = 1
+  , hidden_units  = 10
+  , penalty       = 10 
+) %>%
   set_engine("nnetar")
 
 set.seed(123)

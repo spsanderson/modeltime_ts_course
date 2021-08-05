@@ -490,7 +490,9 @@ model_spec_nnetar <- nnetar_reg(
   non_seasonal_ar = 1
   , seasonal_ar   = 1
   , hidden_units  = 10
-  , penalty       = 10 
+  , penalty       = 10
+  , num_networks  = 5
+  , epochs        = 50
 ) %>%
   set_engine("nnetar")
 

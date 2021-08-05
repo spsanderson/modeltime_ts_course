@@ -485,7 +485,7 @@ calibrate_and_plot(
 # - Must include date feature
 
 # Base Model
-
+model_spec_nnetar <- nnetar_reg()
 
 # Calibrate & Plot
 

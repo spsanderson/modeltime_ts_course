@@ -412,18 +412,36 @@ calibrate_and_plot(
 # - Does better than tree-based algorithms when time series has trend
 # - Can predict beyond maximum
 
-
-
 # Implementation 
+model_spec_cubist <- cubist_rules(
+  committees  = 50
+  , neighbors = 7
+  , max_rules = 100 
+) %>%
+  set_engine("Cubist")
 
 # Spline
 
+set.seed(123)
+wflw_fit_cubist_spline <- workflow() %>%
+  add_model(model_spec_cubist) %>%
+  add_recipe(recipe_spec_1_spline) %>%
+  fit(training(splits))
+
 
 # Lag
-
+set.seed(123)
+wflw_fit_cubist_lag <- workflow() %>%
+  add_model(model_spec_cubist) %>%
+  add_recipe(recipe_spec_2_lag) %>%
+  fit(training(splits))
 
 # Calibrate & Plot
 
+calibrate_and_plot(
+  wflw_fit_cubist_spline,
+  wflw_fit_cubist_lag
+)
 
 
 # 9.0 NEURAL NET ----

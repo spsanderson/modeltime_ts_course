@@ -455,7 +455,7 @@ model_spec_nnet <- mlp(
   mode = "regression"
   , hidden_units = 10
   , penalty = 1
-  , epochs = 200
+  , epochs = 100
 ) %>%
   set_engine("nnet")
 

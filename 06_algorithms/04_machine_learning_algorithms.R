@@ -485,10 +485,21 @@ calibrate_and_plot(
 # - Must include date feature
 
 # Base Model
-model_spec_nnetar <- nnetar_reg()
+
+model_spec_nnetar <- nnetar_reg() %>%
+  set_engine("nnetar")
+
+set.seed(123)
+wflw_fit_nnetar_base <- workflow() %>%
+  add_model(model_spec_nnetar) %>%
+  add_recipe(recipe_spec_base) %>%
+  fit(training(splits) %>% drop_na())
 
 # Calibrate & Plot
 
+calibrate_and_plot(
+  wflw_fit_nnetar_base
+)
 
 
 # 11.0 Modeltime Forecasting Workflow -----

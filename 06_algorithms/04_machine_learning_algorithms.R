@@ -449,14 +449,32 @@ calibrate_and_plot(
 # - Simple network - Like linear regression
 # - Can improve learning by adding more hidden units, epochs, etc
 
-# Spline
+# Implementation
 
+model_spec_nnet <- mlp(
+  mode = "regression"
+) %>%
+  set_engine("nnet")
+
+# Spline
+set.seed(123)
+wflw_fit_nnet_split <- workflow() %>%
+  add_model(model_spec_nnet) %>%
+  add_recipe(recipe_spec_1_spline) %>%
+  fit(training(splits))
 
 # Lag
-
+set.seed(123)
+wflw_fit_nnet_lag <- workflow() %>%
+  add_model(model_spec_nnet) %>%
+  add_recipe(recipe_spec_2_lag) %>%
+  fit(training(splits))
 
 # Calibrate & Plot
-
+calibrate_and_plot(
+  wflw_fit_nnet_split,
+  wflw_fit_nnet_lag
+)
 
 # 10.0 NNETAR ----
 # - NNET with Lagged Features (AR)

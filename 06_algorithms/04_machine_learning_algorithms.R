@@ -453,6 +453,9 @@ calibrate_and_plot(
 
 model_spec_nnet <- mlp(
   mode = "regression"
+  , hidden_units = 10
+  , penalty = 1
+  , epochs = 200
 ) %>%
   set_engine("nnet")
 

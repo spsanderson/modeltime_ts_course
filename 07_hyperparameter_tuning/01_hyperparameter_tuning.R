@@ -173,13 +173,20 @@ wflw_tune_nnetar <- wflw_fit_nnetar %>%
 
 
 # ** TSCV Cross Validation ----
-wflw_tune_nnetar %>%
+
+set.seed(123)
+tic()
+tune_results_nnetar_1 <- wflw_tune_nnetar %>%
     tune_grid(
         resamples = resamples_tscv_lag,
         grid      = grid_spec_nnetar_1,
-        metrics   = default_forecast_accuracy_metric_set()
+        metrics   = default_forecast_accuracy_metric_set(),
+        control   = control_grid(
+            verbose   = TRUE,
+            save_pred = TRUE
+        )
     )
-
+toc()
 
 # ** Reset Sequential Plan ----
 

@@ -112,15 +112,37 @@ resamples_tscv_lag %>%
 
 # * Recipe ----
 
-
+recipe_spec_3_lag_date <- wflw_fit_nnetar %>% 
+    extract_preprocessor() %>%
+    step_naomit(starts_with("lag"))
 
 # * Model Spec ----
+wflw_fit_nnetar %>%
+    extract_spec_parsnip()
 
-
+model_spec_nnetar <- nnetar_reg(
+    seasonal_period = 7,
+    non_seasonal_ar = tune(id = "non_seasonal_ar"),
+    seasonal_ar     = tune(),
+    hidden_units    = tune(),
+    num_networks    = 10,
+    penalty         = tune(),
+    epochs          = 50
+) %>%
+    set_engine("nnetar")
 
 # * Grid Spec ----
 # - Random Process 
 
+parameters(model_spec_nnetar)
+
+set.seed(123)
+grid_random(parameters(model_spec_nnetar), size = 10)
+
+# Round 1
+
+
+# Round 2
 
 
 # * Tune ----

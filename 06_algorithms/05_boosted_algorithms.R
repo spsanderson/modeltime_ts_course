@@ -82,13 +82,18 @@ recipe_spec_base_no_lag %>%
 
 model_spec_prophet_boost <- prophet_boost(
     # Prophet Params
-    changepoint_num = 25,
-    changepoint_range = 0.8,
+    changepoint_num    = 25,
+    changepoint_range  = 0.8,
+    seasonality_daily  = FALSE,
+    seasonality_weekly = FALSE,
+    seasonality_yearly = FALSE,
     
-    # XGBoost params
-    min_n = l,
-    tree_depth = 6,
-    learn_rate = 0.3
+    # XGBoost params - You want to tune
+    min_n          = 20,
+    tree_depth     = 6,
+    learn_rate     = 0.2,
+    loss_reduction = 0.15,
+    trees          = 300
 ) %>%
     set_engine("prophet_xgboost")
 
@@ -100,7 +105,10 @@ wflw_fit_prophet_boost <- workflow() %>%
     add_recipe(recipe_spec_base_no_lag) %>%
     fit(training(splits))
 
-
+calibrate_and_plot(
+    model_fit_best_prophet,
+    wflw_fit_prophet_boost
+)
 
 
 # 2.0 ARIMA BOOST ----

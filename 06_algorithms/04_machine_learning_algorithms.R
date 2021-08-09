@@ -554,13 +554,42 @@ model_tbl <- modeltime_table(
 model_tbl
 
 # * Calibration Table ----
+calibration_tbl <- model_tbl %>%
+  modeltime_calibrate(testing(splits))
 
+calibration_tbl
 
 # * Obtain Test Forecast Accuracy ----
-
+calibration_tbl %>%
+  modeltime_accuracy() %>%
+  table_modeltime_accuracy(
+    resizable = TRUE,
+    bordered = TRUE
+  )
 
 # * Visualize Test Forecast ----
 
+forecast_test_tbl <- calibration_tbl %>%
+  modeltime_forecast(
+    new_data = testing(splits)
+    , actual_data = data_prepared_tbl
+  )
+
+forecast_test_tbl %>%
+  plot_modeltime_forecast(.conf_interval_show = FALSE)
 
 # * Refit ----
-  
+set.seed(123)
+refit_tbl <- calibration_tbl %>%
+  modeltime_refit(
+    data = data_prepared_tbl
+  )
+
+forecast_future_tbl <- refit_tbl %>%
+  modeltime_forecast(
+    new_data = artifacts_list$data$forecast_tbl,
+    actual_data = data_prepared_tbl
+  )
+
+forecast_future_tbl %>%
+  plot_modeltime_forecast(.conf_interval_show = FALSE)

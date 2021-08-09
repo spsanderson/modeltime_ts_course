@@ -141,6 +141,12 @@ grid_random(parameters(model_spec_nnetar), size = 10)
 
 # Round 1
 
+set.seed(123)
+grid_spec_nnetar_1 <- grid_latin_hypercube(
+    parameters(model_spec_nnetar)
+    , size = 15
+)
+
 
 # Round 2
 
@@ -149,8 +155,13 @@ grid_random(parameters(model_spec_nnetar), size = 10)
 # - Expensive Operation
 # - Parallel Processing is essential
 
+?tune_grid
 
 # Workflow - Tuning
+
+wflw_tune_nnetar <- wflw_fit_nnetar %>%
+    update_recipe(recipe_spec_3_lag_date) %>%
+    update_model(model_spec_nnetar)
 
 
 
@@ -162,7 +173,10 @@ grid_random(parameters(model_spec_nnetar), size = 10)
 
 
 # ** TSCV Cross Validation ----
-
+wflw_tune_nnetar %>%
+    tune_grid(
+        resamples = resamples_tscv_lag
+    )
 
 
 # ** Reset Sequential Plan ----

@@ -82,15 +82,16 @@ recipe_spec_base_no_lag %>%
 
 model_spec_prophet_boost <- prophet_boost(
     # Prophet Params
-    changepoint_num    = 25,
+    changepoint_num    = 20,
     changepoint_range  = 0.8,
     seasonality_daily  = FALSE,
     seasonality_weekly = FALSE,
     seasonality_yearly = FALSE,
     
     # XGBoost params - You want to tune
+    #mtry           = 6,
     min_n          = 20,
-    tree_depth     = 6,
+    tree_depth     = 3,
     learn_rate     = 0.2,
     loss_reduction = 0.15,
     trees          = 300
@@ -113,6 +114,8 @@ calibrate_and_plot(
 
 # 2.0 ARIMA BOOST ----
 
+model_fit_best_arima %>%
+    calibrate_and_plot()
 
 # * Best ARIMA Model ----
 

@@ -71,6 +71,7 @@ model_tbl <- combine_modeltime_tables(
 # * Review Accuracy ----
 
 calibration_tbl <- model_tbl %>%
+    modeltime_refit(training(splits)) %>%
     modeltime_calibrate(testing(splits))
 
 
@@ -88,12 +89,26 @@ calibration_tbl <- model_tbl %>%
 #   - Any algorithm from the forecast package
 
 # * Extract Fitted Model ----
+wflw_fit_nnetar <- calibration_tbl %>%
+    pluck_modeltime_model(19)
 
-
+wflw_fit_nnetar
 
 # * Cross Validation Plan (TSCV) -----
 # - Time Series Cross Validation
 
+resamples_tscv_lag <- time_series_cv(
+    data        = training(splits) %>% drop_na(),
+    date_var    = optin_time,
+    cumulative  = TRUE,
+    assess      = "8 weeks",
+    skip        = "4 weeks",
+    slice_limit = 6
+)
+
+resamples_tscv_lag %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(optin_time, optins_trans, .facet_ncol = 2)
 
 # * Recipe ----
 

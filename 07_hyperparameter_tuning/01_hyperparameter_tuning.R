@@ -175,7 +175,9 @@ wflw_tune_nnetar <- wflw_fit_nnetar %>%
 # ** TSCV Cross Validation ----
 wflw_tune_nnetar %>%
     tune_grid(
-        resamples = resamples_tscv_lag
+        resamples = resamples_tscv_lag,
+        grid      = grid_spec_nnetar_1,
+        metrics   = default_forecast_accuracy_metric_set()
     )
 
 

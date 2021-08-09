@@ -32,6 +32,7 @@ library(plotly)
 library(tidyverse)
 library(lubridate)
 library(timetk)
+library(plotly)
 
 
 # DATA ----

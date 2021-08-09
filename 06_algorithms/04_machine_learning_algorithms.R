@@ -593,3 +593,9 @@ forecast_future_tbl <- refit_tbl %>%
 
 forecast_future_tbl %>%
   plot_modeltime_forecast(.conf_interval_show = FALSE)
+
+# 12.0 SAVING ARTIFACTS ----
+calibration_tbl %>%
+  write_rds("00_models/machine_learning_calibration_tbl.rds")
+
+dump(c("calibrate_and_plot"), file = "00_scripts/01_calibrate_and_plot.R")

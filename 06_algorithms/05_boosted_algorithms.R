@@ -41,28 +41,64 @@ splits %>%
     plot_time_series_cv_plan(optin_time, optins_trans)
 
 
-# 1.0 PROPHET BOOST ----
+# 1.0 PROPHET BOOST ---- best for daily or sub daily
 
 # * Best Prophet Model ----
+model_fit_best_prophet
 
+model_fit_best_prophet$preproc$terms %>% formula()
 
 # Error - Broken Model
 
+calibrate_and_plot(
+    model_fit_best_prophet
+)
 
 # Fixing a broken model
+model_tbl_best_prophet <- modeltime_table(model_fit_best_prophet) %>%
+    modeltime_refit(training(splits))
 
+model_fit_best_prophet <- model_tbl_best_prophet$.model[[1]]
+model_tbl_best_prophet %>% pluck(".model", 1)
 
+calibrate_and_plot(
+    model_fit_best_prophet
+)
 
 # * Boosting Prophet Models ----
 
 # Recipes
 
+recipe_spec_base <- artifacts_list$recipes$recipe_spec_base
+recipe_spec_base_no_lag <- recipe_spec_base %>%
+    step_rm(starts_with("lag_"))
+
+recipe_spec_base_no_lag %>%
+    prep() %>%
+    juice() %>%
+    glimpse()
 
 # Model Spec
 
+model_spec_prophet_boost <- prophet_boost(
+    # Prophet Params
+    changepoint_num = 25,
+    changepoint_range = 0.8,
+    
+    # XGBoost params
+    min_n = l,
+    tree_depth = 6,
+    learn_rate = 0.3
+) %>%
+    set_engine("prophet_xgboost")
 
 # Workflow
 
+set.seed(123)
+wflw_fit_prophet_boost <- workflow() %>%
+    add_model(model_spec_prophet_boost) %>%
+    add_recipe(recipe_spec_base_no_lag) %>%
+    fit(training(splits))
 
 
 

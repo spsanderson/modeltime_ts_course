@@ -143,27 +143,52 @@ calibrate_and_plot(
 # * Boosting ARIMA -----
 
 
-
 # 3.0 MODELTIME EVALUATION ----
 
 # * Modeltime ----
 
+model_tbl <- modeltime_table(
+    model_fit_best_prophet,
+    wflw_fit_prophet_boost,
+    
+    model_fit_best_arima,
+    wflw_fit_arima_boost
+)
 
 
 
 # * Calibration ----
-
+calibration_tbl <- model_tbl %>%
+    modeltime_calibrate(testing(splits))
 
 
 # * Accuracy Test ----
-
+calibration_tbl %>%
+    modeltime_accuracy()
 
 
 # * Forecast Test ----
-
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits)
+        , actual_data = data_prepared_tbl
+    ) %>% 
+    plot_modeltime_forecast(.conf_interval_show = FALSE)
 
 
 # * Refit ----
 
+refit_tbl <- calibration_tbl %>%
+    modeltime_refit(data = data_prepared_tbl)
+
+refit_tbl %>%
+    modeltime_forecast(
+        new_data = artifacts_list$data$forecast_tbl
+        , actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast(.conf_interval_show = FALSE)
 
 # 4.0 SAVE ARTIFACTS ----
+
+calibration_tbl %>%
+    write_rds("00_models/calibration_tbl_boosted_models.rds")

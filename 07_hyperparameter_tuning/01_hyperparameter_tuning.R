@@ -62,11 +62,16 @@ splits %>%
 # 1.0 REVIEW  ----
 
 # * Combine Tables ----
-
-
+model_tbl <- combine_modeltime_tables(
+    calibration_ml_tbl,
+    calibration_ets_tbl,
+    calibration_boosted_tbl
+)
 
 # * Review Accuracy ----
 
+calibration_tbl <- model_tbl %>%
+    modeltime_calibrate(testing(splits))
 
 
 # [SEQUENTIAL MODEL] ----

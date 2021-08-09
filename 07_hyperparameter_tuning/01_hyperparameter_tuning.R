@@ -150,6 +150,13 @@ grid_spec_nnetar_1 <- grid_latin_hypercube(
 
 # Round 2
 
+set.seed(123)
+grid_spec_nnetar_2 <- grid_latin_hypercube(
+    non_seasonal_ar(range = c(1,3)),
+    
+    size = 15
+)
+
 
 # * Tune ----
 # - Expensive Operation
@@ -188,17 +195,23 @@ tune_results_nnetar_1 <- wflw_tune_nnetar %>%
     )
 toc()
 
+tune_results_nnetar_1
+
 # ** Reset Sequential Plan ----
 
 
 
 # Show Results
 
-
+tune_results_nnetar_1 %>% show_best(metric = "rmse", n = Inf)
 
 # Visualize Results
 
+g <- tune_results_nnetar_1 %>%
+    tune::autoplot() +
+    geom_smooth(se = FALSE)
 
+ggplotly(g)
 
 # * Retrain & Assess -----
 

@@ -153,10 +153,13 @@ grid_spec_nnetar_1 <- grid_latin_hypercube(
 set.seed(123)
 grid_spec_nnetar_2 <- grid_latin_hypercube(
     non_seasonal_ar(range = c(1,3)),
-    
+    seasonal_ar(range = c(0,1)),
+    hidden_units(range= c(2,5)),
+    penalty(range = c(-4.8, -2.9), trans = scales::log10_trans()),
     size = 15
 )
 
+grid_spec_nnetar_2
 
 # * Tune ----
 # - Expensive Operation

@@ -461,7 +461,7 @@ model_spec_nnet <- mlp(
 
 # Spline
 set.seed(123)
-wflw_fit_nnet_split <- workflow() %>%
+wflw_fit_nnet_spline <- workflow() %>%
   add_model(model_spec_nnet) %>%
   add_recipe(recipe_spec_1_spline) %>%
   fit(training(splits))
@@ -513,7 +513,45 @@ calibrate_and_plot(
 # - Compare model performance
 
 # * Modeltime Table ----
+model_tbl <- modeltime_table(
+  wflw_fit_glmnet_spline,
+  wflw_fit_glmnet_lag,
+  
+  wflw_fit_mars_spline,
+  wflw_fit_mars_lag,
+  
+  wflw_fit_svm_poly_spline,
+  wflw_fit_svm_poly_lag,
+  
+  wflw_fit_svm_rbf_spline,
+  wflw_fit_svm_rbf_lag,
+  
+  wflw_fit_knn_spline,
+  wflw_fit_knn_lag,
+  
+  wflw_fit_rf_spline,
+  wflw_fit_rf_lag,
+  
+  wflw_fit_xgboost_spline,
+  wflw_fit_xgboost_lag,
+  
+  wflw_fit_cubist_spline,
+  wflw_fit_cubist_lag,
+  
+  wflw_fit_nnet_spline,
+  wflw_fit_nnet_lag,
+  
+  wflw_fit_nnetar_base
+) %>%
+  mutate(
+    .model_desc_2 = str_c(.model_desc, rep_along(.model_desc, c(" - Spline", " - Lag")))
+  ) %>%
+  mutate(
+    .model_desc = ifelse(.model_id == 19, .model_desc, .model_desc_2)
+  ) %>%
+  select(-.model_desc_2)
 
+model_tbl
 
 # * Calibration Table ----
 

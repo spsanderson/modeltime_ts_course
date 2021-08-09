@@ -119,7 +119,26 @@ model_fit_best_arima %>%
 
 # * Best ARIMA Model ----
 
+model_spec_arima_boost <- arima_boost(
+    seasonal_period = 1,
+    
+    min_n = 20,
+    tree_depth = 3,
+    learn_rate = 0.25,
+    loss_reduction = 0.15,
+    trees = 300
+) %>%
+    set_engine("auto_rima_xgboost")
 
+set.seed(123)
+wflw_fit_arima_boost <- wflw_fit_prophet_boost %>%
+    update_model(model_spec_arima_boost) %>%
+    fit(training(splits))
+
+calibrate_and_plot(
+    wflw_fit_arima_boost,
+    type = "testing"
+)
 
 # * Boosting ARIMA -----
 

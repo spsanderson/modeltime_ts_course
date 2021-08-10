@@ -323,7 +323,7 @@ model_spec_prophet_boost <- prophet_boost(
 model_spec_prophet_boost
 
 # * Grid Spec ----
-# Round 1
+# ** Round 1 ----
 
 grid_spec_prophet_boost_1 <- grid_latin_hypercube(
     parameters(model_spec_prophet_boost) %>%
@@ -331,6 +331,18 @@ grid_spec_prophet_boost_1 <- grid_latin_hypercube(
             mtry = mtry(range = c(1, 65))
         )
     , size = 15
+)
+
+# ** Round 2 ----
+
+set.seed(123)
+grid_spec_prophet_boost_2 <- grid_latin_hypercube(
+    mtry(range = c(1, 65)),
+    min_n(),
+    tree_depth(),
+    learn_rate(range = c(-1.5, -0.8)),
+    loss_reduction(),
+    size = 15
 )
 
 
@@ -349,7 +361,7 @@ plan(
 
 # ** K-Fold Cross Validation ----
 
-grid <- grid_spec_prophet_boost_1
+grid <- grid_spec_prophet_boost_2
 
 set.seed(123)
 tic()

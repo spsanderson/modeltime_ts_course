@@ -164,7 +164,7 @@ grid_spec_nnetar_2
 # - Expensive Operation
 # - Parallel Processing is essential
 
-?tune_grid
+#?tune_grid
 
 # Workflow - Tuning
 
@@ -183,6 +183,7 @@ wflw_tune_nnetar <- wflw_fit_nnetar %>%
 
 # ** TSCV Cross Validation ----
 
+parallel_start(7)
 set.seed(123)
 tic()
 tune_results_nnetar_1 <- wflw_tune_nnetar %>%
@@ -196,6 +197,7 @@ tune_results_nnetar_1 <- wflw_tune_nnetar %>%
         )
     )
 toc()
+parallel_stop()
 
 tune_results_nnetar_1
 

@@ -272,8 +272,8 @@ calibrate_and_plot(
 
 
 # * Extract Fitted Model ----
-calibration_tbl %>%
-    pluck_modeltime_model(25)
+wflw_fit_prophet_boost <- calibration_tbl %>%
+    pluck_modeltime_model(26)
 
 
 # * Cross Validation Plans (K-Fold) ----
@@ -281,15 +281,46 @@ calibration_tbl %>%
 # - K-Fold is OK
 # - Should set.seed() because random process
 
+set.seed(123)
+resamples_kfold <- vfold_cv(
+    data = training(splits)
+    , v = 10
+)
+
+resamples_kfold %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(optin_time, optins_trans, .facet_ncol = 2)
 
 
 # * Recipe Spec ----
-
+wflw_fit_prophet_boost %>%
+    extract_preprocessor() %>%
+    prep() %>%
+    juice() %>%
+    glimpse()
 
 
 # * Model Spec ----
+wflw_fit_prophet_boost %>%
+    extract_spec_parsnip()
 
+model_spec_prophet_boost <- prophet_boost(
+    changepoint_num      = 20
+    , changepoint_range  = 0.8
+    , seasonality_yearly = FALSE
+    , seasonality_weekly = FALSE
+    , seasonality_daily  = FALSE
+    
+    , mtry           = tune()
+    , trees          = 300
+    , min_n          = tune()
+    , tree_depth     = tune()
+    , learn_rate     = tune()
+    , loss_reduction = tune()
+) %>%
+    set_engine("prophet_xgboost")
 
+model_spec_prophet_boost
 
 # * Grid Spec ----
 

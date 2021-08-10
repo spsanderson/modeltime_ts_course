@@ -345,6 +345,18 @@ grid_spec_prophet_boost_2 <- grid_latin_hypercube(
     size = 15
 )
 
+# ** Round 3 ----
+
+set.seed(123)
+grid_spec_prophet_boost_3 <- grid_latin_hypercube(
+    mtry(range = c(1, 25)),
+    min_n(range = c(3, 20)),
+    tree_depth(range = c(3, 8)),
+    learn_rate(range = c(-1.5, -0.8)),
+    loss_reduction(),
+    size = 15
+)
+
 
 # * Tune ----
 
@@ -361,7 +373,7 @@ plan(
 
 # ** K-Fold Cross Validation ----
 
-grid <- grid_spec_prophet_boost_2
+grid <- grid_spec_prophet_boost_3
 
 set.seed(123)
 tic()
@@ -394,6 +406,7 @@ g <- tune_results_prophet_kfold %>%
 ggplotly(g)
 
 # * Retrain & Assess ----
+
 
 
 

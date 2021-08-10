@@ -375,10 +375,11 @@ tune_results_prophet_kfold %>% show_best(metric = "rmse")
 
 
 # Visualize
-tune_results_prophet_kfold %>%
-    autoplot() +
+g <- tune_results_prophet_kfold %>%
+    tune::autoplot() +
     geom_smooth(se = FALSE)
 
+ggplotly(g)
 
 # * Retrain & Assess ----
 

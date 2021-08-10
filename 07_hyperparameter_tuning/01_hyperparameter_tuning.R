@@ -272,7 +272,8 @@ calibrate_and_plot(
 
 
 # * Extract Fitted Model ----
-
+calibration_tbl %>%
+    pluck_modeltime_model(25)
 
 
 # * Cross Validation Plans (K-Fold) ----

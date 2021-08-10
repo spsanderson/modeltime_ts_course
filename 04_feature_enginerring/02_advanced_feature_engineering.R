@@ -259,12 +259,12 @@ feature_engineering_artifacts_lst <- list(
     # Models / Workflows
     , models = list(
         workflow_fit_lm_1_spline = workflow_fit_lm_1_spline
-        , workflow_fit_lm_2_lag    = workflow_fit_lm_2_lag   
+        , workflow_fit_lm_2_lag  = workflow_fit_lm_2_lag   
     )
     # Inversion Parameters
     , standardize = list(
-        std_mean    = std_mean
-        , std_sd      = std_sd
+        std_mean  = std_mean
+        , std_sd  = std_sd
     )
     , log_interval = list(
         limit_lower = limit_lower

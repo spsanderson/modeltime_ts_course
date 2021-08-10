@@ -28,7 +28,6 @@ library(future)
 library(doFuture)
 
 # Core 
-library(plotly)
 library(tidyverse)
 library(lubridate)
 library(timetk)

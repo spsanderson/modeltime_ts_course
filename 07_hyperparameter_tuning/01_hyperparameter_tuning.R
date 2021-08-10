@@ -407,9 +407,16 @@ ggplotly(g)
 
 # * Retrain & Assess ----
 
+set.seed(123)
+wflw_fit_prophet_boost_kfold <- wflw_fit_prophet_boost %>%
+    update_model(model_spec_prophet_boost) %>%
+    finalize_workflow(
+        tune_results_prophet_kfold %>%
+            show_best(metric = "rmse", n = 1)
+    ) %>%
+    fit(training(splits))
 
-
-
+calibrate_and_plot(wflw_fit_prophet_boost_kfold)
 
 
 

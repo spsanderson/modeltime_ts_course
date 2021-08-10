@@ -176,14 +176,16 @@ wflw_tune_nnetar <- wflw_fit_nnetar %>%
 
 # Run Tune Grid (Expensive Operation) 
 
-
 # ** Setup Parallel Processing ----
 
+registerDoFuture()
 
-
+plan(
+    strategy = cluster,
+    workers  = parallel::makeCluster(parallel::detectCores() - 1)
+)
 # ** TSCV Cross Validation ----
 
-parallel_start(7)
 set.seed(123)
 tic()
 tune_results_nnetar_1 <- wflw_tune_nnetar %>%
@@ -197,28 +199,62 @@ tune_results_nnetar_1 <- wflw_tune_nnetar %>%
         )
     )
 toc()
-parallel_stop()
 
 tune_results_nnetar_1
 
+# Round 2
+set.seed(123)
+tic()
+tune_results_nnetar_2 <- wflw_tune_nnetar %>%
+    tune_grid(
+        resamples = resamples_tscv_lag,
+        grid      = grid_spec_nnetar_2,
+        metrics   = default_forecast_accuracy_metric_set(),
+        control   = control_grid(
+            verbose   = TRUE,
+            save_pred = TRUE
+        )
+    )
+toc()
+
+tune_results_nnetar_2
+
 # ** Reset Sequential Plan ----
 
-
+plan(strategy = sequential)
 
 # Show Results
 
-tune_results_nnetar_1 %>% show_best(metric = "rmse", n = Inf)
+tune_results_nnetar_1 %>% show_best(metric = "rmse")
+tune_results_nnetar_2 %>% show_best(metric = "rmse")
 
 # Visualize Results
 
-g <- tune_results_nnetar_1 %>%
+g1 <- tune_results_nnetar_1 %>%
     tune::autoplot() +
     geom_smooth(se = FALSE)
 
-ggplotly(g)
+ggplotly(g1)
+
+g2 <- tune_results_nnetar_2 %>%
+    tune::autoplot() +
+    geom_smooth(se = FALSE)
+
+ggplotly(g2)
 
 # * Retrain & Assess -----
 
+set.seed(123)
+wflw_fit_nnetar_tscv <- wflw_tune_nnetar %>%
+    finalize_workflow(
+        tune_results_nnetar_2 %>%
+            show_best(metric = "rmse", n = 1)
+    ) %>%
+    fit(training(splits))
+
+calibrate_and_plot(
+    wflw_fit_nnetar_tscv
+)
 
 
 # [NON-SEQUENTIAL] ----

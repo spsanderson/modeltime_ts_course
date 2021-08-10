@@ -408,7 +408,7 @@ ggplotly(g)
 # * Retrain & Assess ----
 
 set.seed(123)
-wflw_fit_prophet_boost_kfold <- wflw_fit_prophet_boost %>%
+wflw_fit_prophet_boost_kfold_rmse <- wflw_fit_prophet_boost %>%
     update_model(model_spec_prophet_boost) %>%
     finalize_workflow(
         tune_results_prophet_kfold %>%
@@ -416,12 +416,34 @@ wflw_fit_prophet_boost_kfold <- wflw_fit_prophet_boost %>%
     ) %>%
     fit(training(splits))
 
-calibrate_and_plot(wflw_fit_prophet_boost_kfold)
+set.seed(123)
+wflw_fit_prophet_boost_kfold_rsq <- wflw_fit_prophet_boost %>%
+    update_model(model_spec_prophet_boost) %>%
+    finalize_workflow(
+        tune_results_prophet_kfold %>%
+            show_best(metric = "rsq", n = 1)
+    ) %>%
+    fit(training(splits))
+
+calibrate_and_plot(
+    wflw_fit_prophet_boost_kfold
+    , wflw_fit_prophet_boost_kfold_rsq
+    )
 
 
 
 # 4.0 SAVE ARTIFACTS ----
 
+set.seed(123)
+calibration_tbl <- modeltime_table(
+    wflw_fit_nnetar_tscv,
+    wflw_fit_prophet_boost_kfold_rmse,
+    wflw_fit_prophet_boost_kfold_rsq
+) %>% 
+    modeltime_calibrate(testing(splits))
 
+calibration_tbl %>%
+    write_rds("00_models/calibration_tbl_hyperparameter_tuning.rds")
 
-
+calibration_tbl %>%
+    modeltime_accuracy()

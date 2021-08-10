@@ -71,7 +71,7 @@ calibrate_and_plot(
 
 recipe_spec_base <- artifacts_list$recipes$recipe_spec_base
 recipe_spec_base_no_lag <- recipe_spec_base %>%
-    step_rm(starts_with("lag_"))
+    step_rm(starts_with("lag_")) 
 
 recipe_spec_base_no_lag %>%
     prep() %>%

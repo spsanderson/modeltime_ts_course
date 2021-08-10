@@ -323,29 +323,61 @@ model_spec_prophet_boost <- prophet_boost(
 model_spec_prophet_boost
 
 # * Grid Spec ----
+# Round 1
 
+grid_spec_prophet_boost_1 <- grid_latin_hypercube(
+    parameters(model_spec_prophet_boost) %>%
+        update(
+            mtry = mtry(range = c(1, 65))
+        )
+    , size = 15
+)
 
 
 # * Tune ----
 
 # ** Setup Parallel Processing ----
+registerDoFuture()
 
+n_cores <- parallel::detectCores() - 1
+
+plan(
+    strategy = cluster,
+    workers  = parallel::makeCluster(n_cores)
+)
 
 
 # ** K-Fold Cross Validation ----
 
+grid <- grid_spec_prophet_boost_1
 
+set.seed(123)
+tic()
+tune_results_prophet_kfold <- wflw_fit_prophet_boost %>%
+    update_model(model_spec_prophet_boost) %>%
+    tune_grid(
+        resamples = resamples_kfold
+        , grid    = grid
+        , metrics = default_forecast_accuracy_metric_set()
+        , control = control_grid(
+            verbose = FALSE
+            , save_pred = TRUE
+        )
+    )    
+toc()
 
 # ** Reset Sequential Plan ----
 
-
+plan(strategy = sequential)
 
 # Show Best
-
+tune_results_prophet_kfold %>% show_best(metric = "rmse")
 
 
 # Visualize
-
+tune_results_prophet_kfold %>%
+    autoplot() +
+    geom_smooth(se = FALSE)
 
 
 # * Retrain & Assess ----

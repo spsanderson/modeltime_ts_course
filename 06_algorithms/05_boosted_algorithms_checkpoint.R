@@ -93,7 +93,7 @@ model_spec_prophet_boost <- prophet_boost(
     seasonality_yearly = FALSE, 
     
     # Xgboost
-    mtry           = 0.75,
+    #mtry           = 0.75,
     min_n          = 20, 
     tree_depth     = 3, 
     learn_rate     = 0.2, 
@@ -142,7 +142,7 @@ model_fit_best_arima$preproc$terms %>% formula()
 model_spec_arima_boost <- arima_boost(
     seasonal_period = 1,
     
-    mtry           = 0.75,
+    #mtry           = 0.75,
     min_n          = 20,
     tree_depth     = 3,
     learn_rate     = 0.25,

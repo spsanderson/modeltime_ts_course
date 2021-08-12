@@ -113,12 +113,21 @@ sub_models_tbl <- calibration_tbl %>%
 
 # * Making an Average Ensemble ----
 
+?ensemble_average
 
+ensemble_fit_mean <- sub_models_tbl %>%
+    ensemble_average(type = "mean")
 
-# * Adding to a Modeltime Table ----
+modeltime_table(ensemble_fit_mean) %>%
+    modeltime_accuracy(testing(splits))
 
+# * Making a Median Model ----
 
+ensemble_fit_median <- sub_models_tbl %>%
+    ensemble_average(type = "median")
 
+modeltime_table(ensemble_fit_median, ensemble_fit_mean) %>%
+    modeltime_accuracy(testing(splits))
 
 # 3.0 WEIGHTED ENSEMBLES ----
 # - Concept: Very similar to a simple average

@@ -75,7 +75,9 @@ model_tbl <- combine_modeltime_tables(
 
 # * Review Accuracy ----
 
-calibration_tbl <- model_tbl %>% modeltime_calibrate(testing(splits))
+calibration_tbl <- model_tbl %>% 
+    modeltime_refit(training(splits)) %>%
+    modeltime_calibrate(testing(splits))
 
 calibration_tbl %>%
     modeltime_accuracy() %>%
@@ -122,7 +124,7 @@ resamples_tscv_lag %>%
 # * Recipe ----
 
 recipe_spec_3_lag_date <- wflw_fit_nnetar %>% 
-    pull_workflow_preprocessor() %>%
+    extract_preprocessor() %>%
     step_naomit(starts_with("lag"))
 
 recipe_spec_3_lag_date %>% prep() %>% juice() %>% glimpse()
@@ -130,7 +132,7 @@ recipe_spec_3_lag_date %>% prep() %>% juice() %>% glimpse()
 
 # * Model Spec ----
 
-wflw_fit_nnetar %>% pull_workflow_spec()
+wflw_fit_nnetar %>% extract_spec_parsnip()
 
 model_spec_nnetar <- nnetar_reg(
     seasonal_period = 7,
@@ -201,7 +203,7 @@ registerDoFuture()
 
 ?plan
 
-n_cores <- detectCores()
+n_cores <- parallel::detectCores()
 
 plan(
     strategy = cluster,
@@ -305,13 +307,17 @@ resamples_kfold %>%
 
 # * Recipe Spec ----
 
-wflw_fit_prophet_boost %>% pull_workflow_preprocessor() %>%
-    prep() %>% juice() %>% glimpse()
+wflw_fit_prophet_boost %>% 
+    extract_preprocessor() %>%
+    prep() %>% 
+    juice() %>% 
+    glimpse()
 
 
 # * Model Spec ----
 
-wflw_fit_prophet_boost %>% pull_workflow_spec()
+wflw_fit_prophet_boost %>% 
+    extract_spec_parsnip()
 
 model_spec_prophet_boost <- prophet_boost(
     changepoint_num    = 25,

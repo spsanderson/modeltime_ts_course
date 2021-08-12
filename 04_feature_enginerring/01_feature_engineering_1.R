@@ -369,5 +369,5 @@ model_fit_best_lm <- lm(model_formula, data = data_prep_events_tbl)
 
 model_fit_best_lm$terms %>% formula()
 
-write_rds(model_fit_best_lm, path = "00_models/model_fit_best_lm.rds")
+write_rds(model_fit_best_lm, file = "00_models/model_fit_best_lm.rds")
 read_rds("00_models/model_fit_best_lm.rds") %>% summary()

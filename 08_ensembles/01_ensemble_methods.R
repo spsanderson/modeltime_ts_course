@@ -193,7 +193,21 @@ submodels_resample_tscv_tbl$.resample_results[[1]]$.predictions
 
 # *** K-FOLD ----
 
+set.seed(123)
+resamples_kfold <- training(splits) %>%
+    drop_na() %>%
+    vfold_cv()
 
+submodels_resamples_kfold_tbl <- sub_models_tbl %>%
+    dplyr::slice(-1) %>%
+    modeltime_fit_resamples(
+        resamples = resamples_kfold,
+        control_resamples(
+            allow_par = TRUE
+            , verbose = TRUE
+            , pkgs = c("Cubist","rules")
+        )
+    )
 
 # * 4.2 LM STACK ----
 

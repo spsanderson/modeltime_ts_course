@@ -167,8 +167,29 @@ modeltime_table(
 
 # *** TSCV ----
 
+resamples_tscv <- training(splits) %>%
+    drop_na() %>%
+    time_series_cv(
+        assess       = "8 weeks"
+        , skip       = "4 weeks"
+        , initial    = "12 months"
+        , cumulative = TRUE
+    )
 
+resamples_tscv %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(optin_time, optins_trans)
 
+submodels_resample_tscv_tbl <- sub_models_tbl %>%
+    modeltime_fit_resamples(
+        resamples = resamples_tscv,
+        control   = control_resamples(
+            verbose   = TRUE,
+            allow_par = FALSE
+        )
+    )
+
+submodels_resample_tscv_tbl$.resample_results[[1]]$.predictions
 
 # *** K-FOLD ----
 

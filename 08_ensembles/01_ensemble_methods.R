@@ -213,15 +213,29 @@ submodels_resamples_kfold_tbl <- sub_models_tbl %>%
 
 # TSCV 
 
-submodels_resample_tscv_tbl %>%
+ensemble_fit_lm_tscv <- submodels_resample_tscv_tbl %>%
     ensemble_model_spec(
-        model_spec = 
+        model_spec = linear_reg() %>%
+            set_engine("lm")
+        , control = control_grid(verbose = TRUE)
     )
 
+modeltime_table(ensemble_fit_lm_tscv) %>%
+    modeltime_accuracy(testing(splits))
 
 # K-FOLD
 
+set.seed(123)
+ensemble_fit_lm_kfold <- submodels_resamples_kfold_tbl %>%
+    ensemble_model_spec(
+        model_spec = linear_reg() %>% set_engine("lm"),
+        control = control_grid(verbose = TRUE)
+    )
 
+modeltime_table(
+    ensemble_fit_lm_kfold
+) %>%
+    modeltime_accuracy(testing(splits))
 
 # * 4.3 GLMNET STACK ----
 

@@ -213,6 +213,10 @@ submodels_resamples_kfold_tbl <- sub_models_tbl %>%
 
 # TSCV 
 
+submodels_resample_tscv_tbl %>%
+    ensemble_model_spec(
+        model_spec = 
+    )
 
 
 # K-FOLD

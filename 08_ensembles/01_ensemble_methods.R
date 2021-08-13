@@ -6,7 +6,7 @@
 # - Ensembling: Requires modeltime.ensemble
 # - Installation: devtools::install_github("business-science/modeltime.ensemble")
 
-# GOAL: Combine Models (Ensemble) to Use Strength of Individual Models by 
+# GOAL: Combine Models (Ensemble) to Use Strength of Individual ♀Models by 
 #  using their output as input into a final estimator
 
 # OBJECTIVES ----
@@ -137,9 +137,20 @@ modeltime_table(ensemble_fit_median, ensemble_fit_mean) %>%
 # - Weakness: How to decide the weights?
 # - Technique: Use a simple ranking (fastest)
 
+loadings_tbl <- sub_models_tbl %>%
+    modeltime_accuracy() %>%
+    mutate(rank = min_rank(-rmse)) %>%
+    select(.model_id, rank)
 
+ensemble_fit_wt <- sub_models_tbl %>%
+    ensemble_weighted(loadings = loadings_tbl$rank)
 
+ensemble_fit_wt$fit$loadings_tbl
 
+modeltime_table(
+    ensemble_fit_wt
+) %>%
+    modeltime_accuracy(testing(splits))
 
 # 4.0 STACKING ----
 # - Concept: We use sub-model predictions as inputs; use a meta-learner to predict

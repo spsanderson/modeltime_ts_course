@@ -258,8 +258,27 @@ ensemble_fit_glmnet_kfold <- submodels_resamples_kfold_tbl %>%
 modeltime_table(ensemble_fit_glmnet_kfold) %>%
     modeltime_accuracy(testing(splits))
 
+
+
 # * 4.4 RANDOM FOREST STACK ----
 
+set.seed(123)
+ensemble_fit_rf_kfold <- submodels_resamples_kfold_tbl %>%
+    ensemble_model_spec(
+        model_spec = rand_forest(
+            trees = tune(),
+            min_n = tune()
+        ) %>%
+            set_engine("ranger")
+        , kfolds = 10
+        , grid   = 10
+        , control = control_grid(
+            verbose   = TRUE,
+            allow_par = TRUE
+        )
+    )
+
+modeltime_table(ensemble_fit_rf_k)
 
 
 # * 4.5 NNET STACK ----

@@ -278,11 +278,28 @@ ensemble_fit_rf_kfold <- submodels_resamples_kfold_tbl %>%
         )
     )
 
-modeltime_table(ensemble_fit_rf_k)
+modeltime_table(ensemble_fit_rf_kfold) %>%
+    modeltime_accuracy(testing(splits))
 
 
 # * 4.5 NNET STACK ----
 
+set.seed(123)
+ensemble_fit_nnet_kfold <- submodels_resamples_kfold_tbl %>%
+    ensemble_model_spec(
+        model_spec = mlp(
+            hidden_units = tune(),
+            penalty = tune(),
+            epochs = tune()
+        ) %>%
+            set_engine("nnet")
+        , kfolds = 10
+        , grid = 10
+        , control = control_grid(
+            verbose = TRUE,
+            allow_par = TRUE
+        )
+    )
 
 
 # * 4.6 XGBOOST STACK ----

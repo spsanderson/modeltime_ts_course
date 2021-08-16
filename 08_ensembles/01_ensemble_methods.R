@@ -301,6 +301,9 @@ ensemble_fit_nnet_kfold <- submodels_resamples_kfold_tbl %>%
         )
     )
 
+modeltime_table(ensemble_fit_nnet_kfold) %>%
+    modeltime_accuracy(testing(splits))
+
 
 # * 4.6 XGBOOST STACK ----
 

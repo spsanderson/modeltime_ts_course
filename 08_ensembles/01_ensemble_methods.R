@@ -449,6 +449,15 @@ refit_ensemble_superlearner_tbl <- calibration_ensemble_tbl %>%
             vfold_cv(v = 10)
     )
 
+forecast_superlearner_tbl <- refit_ensemble_superlearner_tbl %>%
+    modeltime_forecast(
+        new_data = artifacts_list$data$forecast_tbl
+        , actual_data = data_prepared_tbl
+    )
+
+forecast_superlearner_tbl %>%
+    plot_modeltime_forecast()
+
 # * Turn off Parallelization ----
 plan(sequential)
 

@@ -438,7 +438,16 @@ forecast_submodels_tbl <- refit_ensemble_submodel_tbl %>%
 forecast_submodels_tbl %>%
     plot_modeltime_forecast()
 
+# Updating the superlearner and sub-models
 
+set.seed(123)
+refit_ensemble_superlearner_tbl <- calibration_ensemble_tbl %>%
+    modeltime_refit(
+        data = data_prepared_tbl,
+        resamples = data_prepared_tbl %>%
+            drop_na() %>%
+            vfold_cv(v = 10)
+    )
 
 # * Turn off Parallelization ----
 plan(sequential)

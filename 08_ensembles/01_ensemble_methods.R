@@ -353,6 +353,22 @@ modeltime_table(ensemble_fit_cubist_kfold) %>%
 
 # * 4.8 SVM STACK ----
 
+set.seed(123)
+ensemble_fit_svm_kfold <- submodels_resamples_kfold_tbl %>%
+    ensemble_model_spec(
+        model_spec = svm_rbf(
+            cost      = tune(),
+            rbf_sigma = tune(),
+            margin    = tune()
+        ) %>%
+            set_engine("kernlab")
+        , kfold = 10
+        , grid = 10
+        , control = control_grid(
+            verbose = TRUE
+            , allow_par = TRUE
+        )
+    )
 
 
 # 5.0 MULTI-LEVEL STACK ----

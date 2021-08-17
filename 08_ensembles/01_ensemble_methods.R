@@ -306,12 +306,50 @@ modeltime_table(ensemble_fit_nnet_kfold) %>%
 
 
 # * 4.6 XGBOOST STACK ----
+set.seed(123)
+ensemble_fit_xgboost_kfold <- submodels_resamples_kfold_tbl %>%
+    ensemble_model_spec(
+        model_spec = boost_tree(
+            trees          = tune(),
+            tree_depth     = tune(),
+            learn_rate     = tune(),
+            loss_reduction = tune()
+        ) %>%
+            set_engine("xgboost")
+        , kfolds = 10
+        , grid = 10
+        , control = control_grid(
+            verbose = TRUE,
+            allow_par = TRUE
+        )
+    )
 
+modeltime_table(
+    ensemble_fit_xgboost_kfold
+) %>%
+    modeltime_accuracy(testing(splits))
 
 
 # * 4.7 CUBIST STACK ----
+set.seed(123)
+ensemble_fit_cubist_kfold <- submodels_resamples_kfold_tbl %>%
+    ensemble_model_spec(
+        model_spec = cubist_rules(
+            committees = tune(),
+            neighbors = tune(),
+            max_rules = tune()
+        ) %>%
+            set_engine("Cubist")
+        , kfolds = 10
+        , grid = 10
+        , control = control_grid(
+            verbose = TRUE
+            , allow_par = TRUE
+        )
+    )
 
-
+modeltime_table(ensemble_fit_cubist_kfold) %>%
+    modeltime_accuracy(testing(splits))
 
 # * 4.8 SVM STACK ----
 

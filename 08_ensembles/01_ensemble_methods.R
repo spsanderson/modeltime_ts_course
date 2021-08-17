@@ -424,6 +424,20 @@ forecast_test_tbl %>%
 
 # * Refit Forecast ----
 
+# Not udating the super learner but updating sub-models
+
+refit_ensemble_submodel_tbl <- calibration_ensemble_tbl %>%
+    modeltime_refit(data = data_prepared_tbl)
+
+forecast_submodels_tbl <- refit_ensemble_submodel_tbl %>%
+    modeltime_forecast(
+        new_data      = artifacts_list$data$forecast_tbl
+        , actual_data = data_prepared_tbl
+    )
+
+forecast_submodels_tbl %>%
+    plot_modeltime_forecast()
+
 
 
 # * Turn off Parallelization ----

@@ -370,6 +370,9 @@ ensemble_fit_svm_kfold <- submodels_resamples_kfold_tbl %>%
         )
     )
 
+modeltime_table(ensemble_fit_svm_kfold) %>%
+    modeltime_accuracy(testing(splits))
+
 
 # 5.0 MULTI-LEVEL STACK ----
 

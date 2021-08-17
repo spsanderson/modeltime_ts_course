@@ -376,8 +376,31 @@ modeltime_table(ensemble_fit_svm_kfold) %>%
 
 # 5.0 MULTI-LEVEL STACK ----
 
+model_stack_level_2_accuracy_tbl <- modeltime_table(
+    ensemble_fit_glmnet_kfold,
+    ensemble_fit_rf_kfold,
+    ensemble_fit_nnet_kfold,
+    ensemble_fit_xgboost_kfold,
+    ensemble_fit_cubist_kfold,
+    ensemble_fit_svm_kfold
+) %>%
+    modeltime_accuracy(testing(splits))
 
+model_stack_level_2_accuracy_tbl %>%
+    table_modeltime_accuracy()
 
+model_stack_level_3_tbl <- modeltime_table(
+    ensemble_fit_rf_kfold,
+    ensemble_fit_svm_kfold,
+    ensemble_fit_glmnet_kfold
+) %>%
+    ensemble_weighted(
+        loadings = c(5,3,1)
+    ) %>%
+    modeltime_table()
+
+model_stack_level_3_tbl %>%
+    modeltime_accuracy(testing(splits))
 
 # 6.0 MODELTIME ----
 

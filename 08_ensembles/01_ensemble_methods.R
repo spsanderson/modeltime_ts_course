@@ -406,14 +406,21 @@ model_stack_level_3_tbl %>%
 
 # * Calibration  ----
 
+calibration_ensemble_tbl <- model_stack_level_3_tbl %>%
+    modeltime_calibrate(testing(splits))
 
 # * Accuracy ----
-
+calibration_ensemble_tbl %>%
+    modeltime_accuracy()
 
 
 # * Test Forecast ----
+forecast_test_tbl <- calibration_ensemble_tbl %>%
+    modeltime_forecast(new_data = testing(splits),
+                       actual_data = data_prepared_tbl)
 
-
+forecast_test_tbl %>%
+    plot_modeltime_forecast()
 
 # * Refit Forecast ----
 

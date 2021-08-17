@@ -463,3 +463,7 @@ plan(sequential)
 
 # 7.0 SAVE ----
 
+model_stack_level_3_tbl %>%
+    write_rds(
+        "00_models/model_stack_level_3_tbl.rds"
+    )

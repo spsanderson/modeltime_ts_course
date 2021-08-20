@@ -46,9 +46,37 @@ plan(
 # * GA Data ----
 ga_page_raw_tbl <- read_rds("00_data/google_analytics_by_page_daily.rds")
 
-
+ga_page_raw_tbl %>%
+    group_by(pagePath) %>%
+    plot_time_series(
+        date
+        , pageViews
+        , .facet_ncol = 4
+        , .smooth = FALSE
+        , .interactive = FALSE
+    )
 
 # * Full Data ----
+
+ga_page_raw_tbl %>%
+    
+    # Fix data issues
+    select(date, pagePath, pageViews) %>%
+    group_by(pagePath) %>%
+    pad_by_time(date, .by = "day", .pad_value = 0) %>%
+    ungroup() %>%
+    
+    # Global features / Transformations / Joins
+    mutate(pageViews = log1p(pageViews)) %>%
+    
+    # Group-wise Feature Transformations
+    group_by(pagePath) %>%
+    future_frame(
+        .date_var = date
+        , .length_out = 28
+        , .bind_data = TRUE
+    ) %>%
+    ungroup()
 
 
 # * Data Prepared ----

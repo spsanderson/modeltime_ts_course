@@ -100,10 +100,24 @@ full_data_tbl <- ga_page_raw_tbl %>%
 
 
 # * Data Prepared ----
-
+data_prepared_tbl <- full_data_tbl %>%
+    filter(!is.na(pageViews)) %>%
+    drop_na()
 
 # * Future Data ----
+future_tbl <- full_data_tbl %>%
+    filter(is.na(pageViews))
+    
+future_tbl <- future_tbl %>%
+    mutate(
+        across(
+            .cols = contains("_lag")
+            , .fns = ~ ifelse(is.nan(.x), NA, .x)
+            )
+        ) %>%
+    fill(contains("_lag"), .direction = "up")
 
+future_tbl %>% filter(is.na(pageViews_lag28_roll_56))
 
 # 2.0 TIME SPLIT ----
 

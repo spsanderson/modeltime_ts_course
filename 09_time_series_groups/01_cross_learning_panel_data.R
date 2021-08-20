@@ -58,7 +58,7 @@ ga_page_raw_tbl %>%
 
 # * Full Data ----
 
-ga_page_raw_tbl %>%
+full_data_tbl <- ga_page_raw_tbl %>%
     
     # Fix data issues
     select(date, pagePath, pageViews) %>%
@@ -94,7 +94,9 @@ ga_page_raw_tbl %>%
                 , .partial = TRUE
                 , .align = "center"
             )
-    })
+    }) %>%
+    bind_rows() %>%
+    rowid_to_column(var = "rowid")
 
 
 # * Data Prepared ----

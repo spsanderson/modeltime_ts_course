@@ -76,7 +76,18 @@ ga_page_raw_tbl %>%
         , .length_out = 28
         , .bind_data = TRUE
     ) %>%
-    ungroup()
+    ungroup() %>%
+    
+    # Lags / Rolling Features / Fourier
+    mutate(pagePath = as_factor(pagePath)) %>%
+    group_by(pagePath) %>%
+    group_split() %>%
+    map(.f = function(df) {
+        df %>%
+            arrange(date) %>%
+            tk_augment_fourier(date, .periods = c(14, 28)) %>%
+            tk_augment_lags(pageViews, .lags = 28)
+    })
 
 
 # * Data Prepared ----

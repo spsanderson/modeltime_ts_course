@@ -86,7 +86,14 @@ ga_page_raw_tbl %>%
         df %>%
             arrange(date) %>%
             tk_augment_fourier(date, .periods = c(14, 28)) %>%
-            tk_augment_lags(pageViews, .lags = 28)
+            tk_augment_lags(pageViews, .lags = 28) %>%
+            tk_augment_slidify(
+                pageViews_lag28
+                , .f = ~mean(.x, na.rm = TRUE)
+                , .period = c(7, 28, 28*2)
+                , .partial = TRUE
+                , .align = "center"
+            )
     })
 
 

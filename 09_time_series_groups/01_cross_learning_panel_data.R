@@ -140,10 +140,34 @@ splits %>%
 # - With Panel Data, need to do this outside of a recipe
 # - Transformation happens by group
 
+train_cleaned <- training(splits) %>%
+    group_by(pagePath) %>%
+    mutate(pageViews = ts_clean_vec(pageViews, period = 7))
+
+train_cleaned %>%
+    group_by(pagePath) %>%
+    plot_time_series(
+        date,
+        pageViews,
+        .facet_ncol = 4,
+        .smooth = FALSE,
+        .interactive = FALSE
+    )
 
 # * Recipe Specification ----
+train_cleaned
 
+recipe_spec <- recipe(pageViews ~ ., data = train_cleaned) %>%
+    update_role(rowid, new_role = "indicator") %>%
+    step_timeseries_signature(date) %>%
+    step_rm(matches("(.xts$)|(.iso$)|(hour)|(minute)|(second)|(am.pm)")) %>%
+    step_normalize(data_index.num, date_year) %>%
+    step_other(pagePath)
 
+recipe_spec %>%
+    prep() %>%
+    juice() %>%
+    glimpse()
 
 # 4.0 MODELS ----
 # - !!! REMINDER: Cannot use sequential models !!!

@@ -121,7 +121,18 @@ future_tbl %>% filter(is.na(pageViews_lag28_roll_56))
 
 # 2.0 TIME SPLIT ----
 
+splits <- data_prepared_tbl %>%
+    time_series_split(
+        date_var = date
+        , assess = 28
+        , cumulative = TRUE
+    )
 
+splits %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(
+        date, pageViews
+    )
 
 # 3.0 RECIPE ----
 

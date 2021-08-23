@@ -249,7 +249,15 @@ wflw_fit_nnet <- workflow() %>%
 
 
 # * MARS ----
-
+wflw_fit_mars <- workflow() %>%
+    add_model(
+        spec = mars(
+            mode = "regression"
+        ) %>%
+        set_engine("earth")
+    ) %>%
+    add_recipe(recipe_spec %>% update_role(date, new_role = "indicator")) %>%
+    fit(train_cleaned)
 
 
 # * ACCURACY CHECK ----

@@ -161,8 +161,9 @@ recipe_spec <- recipe(pageViews ~ ., data = train_cleaned) %>%
     update_role(rowid, new_role = "indicator") %>%
     step_timeseries_signature(date) %>%
     step_rm(matches("(.xts$)|(.iso$)|(hour)|(minute)|(second)|(am.pm)")) %>%
-    step_normalize(data_index.num, date_year) %>%
-    step_other(pagePath)
+    step_normalize(date_index.num, date_year) %>%
+    step_other(pagePath) %>%
+    step_dummy(all_nominal(), one_hot = TRUE)
 
 recipe_spec %>%
     prep() %>%
@@ -173,6 +174,13 @@ recipe_spec %>%
 # - !!! REMINDER: Cannot use sequential models !!!
 
 # * PROPHET ----
+wflw_fit_prophet <- workflow() %>%
+    add_model(
+        spec = prophet_reg() %>%
+            set_engine("prophet")
+    ) %>%
+    add_recipe(recipe_spec) %>%
+    fit(train_cleaned)
 
 
 # * XGBOOST ----

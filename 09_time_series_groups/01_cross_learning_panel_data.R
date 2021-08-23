@@ -261,9 +261,19 @@ wflw_fit_mars <- workflow() %>%
 
 
 # * ACCURACY CHECK ----
+submodels_1_tbl <- modeltime_table(
+    wflw_fit_prophet,
+    wflw_fit_xgboost,
+    wflw_fit_prophet_boost,
+    wflw_fit_svm,
+    wflw_fit_rf,
+    wflw_fit_nnet,
+    wflw_fit_mars
+)
 
-
-
+submodels_1_tbl %>%
+    modeltime_accuracy(testing(splits))  %>%
+    arrange(rmse)
 
 # 5.0 HYPER PARAMETER TUNING ---- 
 

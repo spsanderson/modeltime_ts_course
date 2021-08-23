@@ -227,11 +227,25 @@ wflw_fit_svm <- workflow() %>%
 
 
 # * RANDOM FOREST ----
-
+wflw_fit_rf <- workflow() %>%
+    add_model(
+        spec = rand_forest(
+            mode = "regression"
+        ) %>%
+            set_engine("ranger")
+    ) %>%
+    add_recipe(recipe_spec %>% update_role(date, new_role = "indicator")) %>%
+    fit(train_cleaned)
 
 
 # * NNET ----
-
+wflw_fit_nnet <- workflow() %>%
+    add_model(
+        spec = mlp(mode = "regression") %>%
+            set_engine("nnet")
+    ) %>%
+    add_recipe(recipe_spec %>% update_role(date, new_role = "indicator")) %>%
+    fit(train_cleaned)
 
 
 # * MARS ----

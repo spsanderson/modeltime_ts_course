@@ -212,6 +212,18 @@ wflw_fit_prophet_boost <- workflow() %>%
 
 # * SVM ----
 
+wflw_fit_svm <- workflow() %>%
+    add_model(
+        spec = svm_rbf(
+            mode = "regression"
+        ) %>%
+            set_engine("kernlab")
+    ) %>%
+    add_recipe(
+        recipe_spec %>%
+            update_role(date, new_role = "indicator")
+    ) %>%
+    fit(train_cleaned)
 
 
 # * RANDOM FOREST ----

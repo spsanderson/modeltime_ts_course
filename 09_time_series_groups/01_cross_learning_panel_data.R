@@ -184,7 +184,16 @@ wflw_fit_prophet <- workflow() %>%
 
 
 # * XGBOOST ----
-
+wflw_fit_xgboost <- workflow() %>%
+    add_model(
+        spec = boost_tree(mode = "regression") %>%
+            set_engine("xgboost")
+    ) %>%
+    add_recipe(
+        recipe_spec %>%
+            update_role(date, new_role = "indicator")
+    ) %>%
+    fit(train_cleaned)
 
 
 # * PROPHET BOOST ----

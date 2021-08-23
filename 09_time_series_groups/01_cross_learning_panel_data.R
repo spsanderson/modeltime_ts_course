@@ -197,7 +197,17 @@ wflw_fit_xgboost <- workflow() %>%
 
 
 # * PROPHET BOOST ----
-
+wflw_fit_prophet_boost <- workflow() %>%
+    add_model(
+        spec = prophet_boost(
+            seasonality_daily = FALSE,
+            seasonality_weekly = FALSE,
+            seasonality_yearly = FALSE
+        ) %>%
+            set_engine("prophet_xgboost")
+    ) %>%
+    add_recipe(recipe_spec) %>%
+    fit(train_cleaned)
 
 
 # * SVM ----

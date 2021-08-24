@@ -279,6 +279,13 @@ submodels_1_tbl %>%
 
 # * RESAMPLES - K-FOLD ----- 
 
+set.seed(123)
+resamples_kfold <- train_cleaned %>%
+    vfold_cv(v = 5)
+
+resamples_kfold %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(date, pageViews, .facet_ncol = 2)
 
 # * XGBOOST TUNE ----
 

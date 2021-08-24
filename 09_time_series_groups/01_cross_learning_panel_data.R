@@ -308,7 +308,7 @@ wflw_spec_xgboost_tune <- workflow() %>%
 # ** Tuning
 set.seed(123)
 parallel_start(4)
-wflw_spec_xgboost_tune %>%
+tune_results_xgboost <- wflw_spec_xgboost_tune %>%
     tune_grid(
         resamples = resamples_kfold
         , grid    = 10
@@ -322,9 +322,16 @@ wflw_spec_xgboost_tune %>%
 parallel_stop()
 
 # ** Results
-
+tune_results_xgboost %>%
+    show_best("rmse", n = Inf)
 
 # ** Finalize
+
+wflw_fit_xgboost_tuned <- wflw_spec_xgboost_tune %>%
+    finalize_workflow(
+        select_best(tune_results_xgboost, "rmse")
+    ) %>%
+    fit(train_cleaned)
 
 
 # * RANGER TUNE ----

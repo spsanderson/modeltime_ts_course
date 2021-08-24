@@ -307,6 +307,7 @@ wflw_spec_xgboost_tune <- workflow() %>%
 
 # ** Tuning
 set.seed(123)
+parallel_start(4)
 wflw_spec_xgboost_tune %>%
     tune_grid(
         resamples = resamples_kfold
@@ -318,6 +319,7 @@ wflw_spec_xgboost_tune %>%
             verbose = TRUE
         )
     )
+parallel_stop()
 
 # ** Results
 

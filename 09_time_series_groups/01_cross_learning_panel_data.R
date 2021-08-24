@@ -290,10 +290,34 @@ resamples_kfold %>%
 # * XGBOOST TUNE ----
 
 # ** Tunable Specification
+model_spec_xgboost_tune <- boost_tree(
+    mode = "regression"
+    , mtry           = tune()
+    , trees          = tune()
+    , min_n          = tune()
+    , tree_depth     = tune()
+    , learn_rate     = tune()
+    , loss_reduction = tune()
+) %>%
+    set_engine("xgboost")
 
+wflw_spec_xgboost_tune <- workflow() %>%
+    add_model(model_spec_xgboost_tune) %>%
+    add_recipe(recipe_spec %>% update_role(date, new_role = "indicator"))
 
 # ** Tuning
-
+set.seed(123)
+wflw_spec_xgboost_tune %>%
+    tune_grid(
+        resamples = resamples_kfold
+        , grid    = 10
+        , param_info = parameters(wflw_spec_xgboost_tune) %>%
+            update(learn_rate = learn_rate(range = c(0.001, 0.400),
+                                           trans = NULL))
+        , control = control_grid(
+            verbose = TRUE
+        )
+    )
 
 # ** Results
 

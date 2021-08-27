@@ -32,12 +32,12 @@ library(timetk)
 
 # * Parallel Processing ----
 
-registerDoFuture()
-n_cores <- parallel::detectCores()
-plan(
-    strategy = cluster,
-    workers  = parallel::makeCluster(n_cores)
-)
+# registerDoFuture()
+# n_cores <- parallel::detectCores()
+# plan(
+#     strategy = cluster,
+#     workers  = parallel::makeCluster(n_cores)
+# )
 
 # plan(sequential)
 
@@ -337,10 +337,33 @@ wflw_fit_xgboost_tuned <- wflw_spec_xgboost_tune %>%
 # * RANGER TUNE ----
 
 # ** Tunable Specification
+model_spec_rf_tuned <- rand_forest(
+    mode  = "regression",
+    mtry  = tune(),
+    trees = tune(),
+    min_n = tune()
+) %>%
+    set_engine("ranger")
 
+wflw_spec_rf_tuned <- workflow() %>%
+    add_model(model_spec_rf_tuned) %>%
+    add_recipe(recipe_spec %>% update_role(date, new_role = "indicator"))
 
 # ** Tuning
-
+parallel_start(4)
+tic()
+set.seed(123)
+tune_results_rf <- wflw_spec_rf_tuned %>%
+    tune_grid(
+        resamples = resamples_kfold,
+        grid = 5,
+        control = control_grid(
+            verbose = TRUE,
+            allow_par = TRUE
+        )
+    )
+toc()
+parallel_stop()
 
 # ** Results
 

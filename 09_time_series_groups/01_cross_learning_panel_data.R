@@ -367,10 +367,16 @@ parallel_stop()
 
 # ** Results
 
+tune_results_rf %>%
+    show_best("rmse", n = Inf)
 
 # ** Finalize
 
-
+wflw_fit_rf_tuned <- wflw_spec_rf_tuned %>%
+    finalize_workflow(
+        select_best(tune_results_rf, "rmse")
+    ) %>%
+    fit(train_cleaned)
 # * EARTH TUNE ----
 
 # ** Tunable Specification

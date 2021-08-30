@@ -382,15 +382,44 @@ wflw_fit_rf_tuned <- wflw_spec_rf_tuned %>%
 
 # ** Tunable Specification
 
+model_spec_earth_tune <- mars(
+    mode        = "regression",
+    num_terms   = tune(),
+    prod_degree = tune()
+) %>%
+    set_engine("earth")
+
+wflw_spec_earth_tune <- workflow() %>%
+    add_model(model_spec_earth_tune) %>%
+    add_recipe(recipe_spec %>% update_role(date, new_role = "indicator"))
 
 # ** Tuning
 
+tic()
+set.seed(123)
+tune_results_earth <- wflw_spec_earth_tune %>%
+    tune_grid(
+        resamples = resamples_kfold,
+        grid      = 10,
+        control   = control_grid(
+            verbose = TRUE,
+            allow_par = TRUE
+        )
+    )
+toc()
 
 # ** Results
+tune_results_earth %>%
+    show_best("rmse", n = Inf)
 
 
 # ** Finalize
-
+wflw_fit_earth_tuned <- wflw_spec_earth_tune %>%
+    finalize_workflow(
+        tune_results_earth %>%
+            select_best("rmse", n = 1)
+    ) %>%
+    fit(train_cleaned)
 
 
 # 6.0 EVALUATE PANEL FORECEASTS  -----

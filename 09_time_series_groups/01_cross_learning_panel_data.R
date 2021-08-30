@@ -425,16 +425,39 @@ wflw_fit_earth_tuned <- wflw_spec_earth_tune %>%
 # 6.0 EVALUATE PANEL FORECEASTS  -----
 
 # * Model Table ----
-
+submodels_2_tbl <- modeltime_table(
+    wflw_fit_xgboost_tuned,
+    wflw_fit_rf_tuned,
+    wflw_fit_earth_tuned
+) %>%
+    update_model_description(1, "XGBOOST - Tuned") %>%
+    update_model_description(2, "RANGER - Tuned") %>%
+    update_model_description(3, "EART - Tuned") %>%
+    combine_modeltime_tables(submodels_1_tbl)
 
 # * Calibration ----
-
+calibration_tbl <- submodels_2_tbl %>%
+    modeltime_calibrate(testing(splits))
 
 # * Accuracy ----
-
+calibration_tbl %>%
+    modeltime_accuracy() %>%
+    arrange(rmse)
 
 # * Forecast Test ----
-
+calibration_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits),
+        actual_data = data_prepared_tbl,
+        keep_data = TRUE
+    ) %>%
+    group_by(pagePath) %>%
+    plot_modeltime_forecast(
+        .facet_ncol = 4,
+        .conf_interval_show = FALSE,
+        .interactive = FALSE
+    )
+    
 
 # 7.0 RESAMPLING ----
 # - Assess the stability of our models over time

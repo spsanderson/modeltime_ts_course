@@ -562,9 +562,26 @@ data_prepared_tbl_cleaned <- data_prepared_tbl %>%
 model_ensemble_refit_tbl <- model_ensemble_tbl %>%
     modeltime_refit(data_prepared_tbl_cleaned)
 
+model_ensemble_refit_tbl %>%
+    modeltime_forecast(
+        new_data = future_tbl,
+        actual_data = data_prepared_tbl,
+        keep_data = TRUE
+    ) %>%
+    mutate(.value = expm1(.value)) %>%
+    mutate(pageViews = expm1(pageViews)) %>%
+    group_by(pagePath) %>%
+    plot_modeltime_forecast(
+        .conf_interval_show = FALSE,
+        .facet_ncol = 4,
+        #.interactive = FALSE,
+        .y_intercept = 0
+    )
+    
+
 
 # * Turn OFF Parallel Backend
-plan(sequential)
+#plan(sequential)
 
 # 9.0 RECAP ----
 # - You:

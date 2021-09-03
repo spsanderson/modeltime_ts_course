@@ -432,7 +432,7 @@ submodels_2_tbl <- modeltime_table(
 ) %>%
     update_model_description(1, "XGBOOST - Tuned") %>%
     update_model_description(2, "RANGER - Tuned") %>%
-    update_model_description(3, "EART - Tuned") %>%
+    update_model_description(3, "EARTH - Tuned") %>%
     combine_modeltime_tables(submodels_1_tbl)
 
 # * Calibration ----
@@ -455,7 +455,7 @@ calibration_tbl %>%
     plot_modeltime_forecast(
         .facet_ncol = 4,
         .conf_interval_show = FALSE,
-        .interactive = FALSE
+        .interactive = TRUE
     )
     
 
@@ -464,10 +464,29 @@ calibration_tbl %>%
 # - Helps us strategize an ensemble approach
 
 # * Time Series CV ----
+resamples_tscv <- train_cleaned %>%
+    time_series_cv(
+        assess      = 28,
+        skip        = 28,
+        cumulative  = TRUE,
+        slice_limit = 4
+    )
 
+resamples_tscv %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(date, pageViews)
 
 # * Fitting Resamples ----
-
+parallel_start(5)
+model_tbl_tuned_resamples <- submodels_2_tbl %>%
+    modeltime_fit_resamples(
+        resamples = resamples_tscv,
+        control   = control_resamples(
+            verbose   = TRUE,
+            allow_par = TRUE
+        )
+    )
+parallel_stop()
 
 # * Resampling Accuracy Table ----
 

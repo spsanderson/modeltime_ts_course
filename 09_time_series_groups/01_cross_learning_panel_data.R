@@ -482,8 +482,8 @@ model_tbl_tuned_resamples <- submodels_2_tbl %>%
     modeltime_fit_resamples(
         resamples = resamples_tscv,
         control   = control_resamples(
-            verbose   = TRUE,
-            allow_par = TRUE
+            verbose       = TRUE,
+            allow_par     = TRUE
         )
     )
 parallel_stop()

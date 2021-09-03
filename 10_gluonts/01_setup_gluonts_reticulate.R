@@ -22,6 +22,9 @@
 
 # * Step 1: Load the Library ----
 library(modeltime.gluonts)
+reticulate::py_discover_config()
+is_gluonts_activated()
+get_python_env()
 
 # * Step 2: Install the Python Environment ----
 
@@ -46,11 +49,38 @@ library(modeltime.gluonts)
 # - Activates the 'r-gluonts' (default) environment
 
 # Test a GluonTS DeepAR Model
-
+library(tidyverse)
+library(tidymodels)
+library(timetk)
 
 # Data
 
+df <- tibble(
+    grp  = "A",
+    date = tk_make_timeseries("2011","2015", by = "month"),
+    y    = 1:60
+)
 
+splits <- df %>%
+    time_series_split(
+        assess = 12,
+        cumulative = TRUE
+    )
+
+model_fit_deepar <- deep_ar(
+    id = "grp",
+    freq = "M",
+    prediction_length = 12,
+    lookback_length = 36
+) %>%
+    set_engine("gluonts_deepar") %>%
+    fit(y ~ ., data = training(splits))
+
+modeltime_table(model_fit_deepar) %>%
+    modeltime_calibrate(testing(splits)) %>%
+    modeltime_forecast(new_data = testing(splits),
+                       actual_data = df) %>%
+    plot_modeltime_forecast()
 
 # 3.0 RETICULATE NAVIGATION ----
 

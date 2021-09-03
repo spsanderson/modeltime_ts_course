@@ -554,6 +554,14 @@ forecast_ensemble_test_tbl %>%
 
 # * Refit ----
 
+data_prepared_tbl_cleaned <- data_prepared_tbl %>%
+    group_by(pagePath) %>%
+    mutate(pageViews = ts_clean_vec(pageViews, period = 7)) %>%
+    ungroup()
+    
+model_ensemble_refit_tbl <- model_ensemble_tbl %>%
+    modeltime_refit(data_prepared_tbl_cleaned)
+
 
 # * Turn OFF Parallel Backend
 plan(sequential)

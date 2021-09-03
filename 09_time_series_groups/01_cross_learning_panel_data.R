@@ -489,18 +489,37 @@ model_tbl_tuned_resamples <- submodels_2_tbl %>%
 parallel_stop()
 
 # * Resampling Accuracy Table ----
-model_tbl_tuned_resamples
+model_tbl_tuned_resamples %>%
+    modeltime_resample_accuracy(
+        metric_set = metric_set(rmse),
+        summary_fns = list(mean = mean, sd = sd)
+    ) %>%
+    arrange(rmse_mean)
 
 # * Resampling Accuracy Plot ----
-
+model_tbl_tuned_resamples %>%
+    plot_modeltime_resamples(
+        .metric_set = metric_set(mae, rmse, rsq),
+        .point_size = 4,
+        .point_alpha = 0.8,
+        .facet_ncol = 1
+    )
 
 # 8.0 ENSEMBLE PANEL MODELS -----
 
 # * Average Ensemble ----
 
+submodels_2_ids_to_keep <- c(5,1,4,6,2)
+
+ensemble_fit <- submodels_2_tbl %>%
+    filter(.model_id %in% submodels_2_ids_to_keep) %>%
+    ensemble_average()
+
+model_ensemble_tbl <- modeltime_table(ensemble_fit)
 
 # * Accuracy ----
-
+model_ensemble_tbl %>%
+    modeltime_accuracy(testing(splits))
 
 # * Forecast ----
 

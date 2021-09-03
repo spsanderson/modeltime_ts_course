@@ -21,7 +21,7 @@
 # - Get the default 'r-gluonts' conda environment set up
 
 # * Step 1: Load the Library ----
-
+library(modeltime.gluonts)
 
 # * Step 2: Install the Python Environment ----
 

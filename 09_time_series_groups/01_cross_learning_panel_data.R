@@ -489,7 +489,7 @@ model_tbl_tuned_resamples <- submodels_2_tbl %>%
 parallel_stop()
 
 # * Resampling Accuracy Table ----
-
+model_tbl_tuned_resamples
 
 # * Resampling Accuracy Plot ----
 

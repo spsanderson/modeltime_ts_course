@@ -523,6 +523,34 @@ model_ensemble_tbl %>%
 
 # * Forecast ----
 
+forecast_ensemble_test_tbl <- model_ensemble_tbl %>%
+    modeltime_forecast(
+        new_data    = testing(splits),
+        actual_data = data_prepared_tbl,
+        keep_data   = TRUE
+    ) %>%
+    mutate(
+        across(
+            .cols = c(.value, pageViews),
+            .fns  = expm1
+        )
+    )
+
+forecast_ensemble_test_tbl %>%
+    group_by(pagePath) %>%
+    plot_modeltime_forecast(
+        .facet_ncol = 4
+    )
+
+forecast_ensemble_test_tbl %>%
+    filter(.key == "prediction") %>%
+    select(pagePath, .value, pageViews) %>%
+    group_by(pagePath) %>%
+    summarize_accuracy_metrics(
+        truth = pageViews,
+        estimate = .value,
+        metric_set = default_forecast_accuracy_metric_set()
+    )
 
 # * Refit ----
 

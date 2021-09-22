@@ -157,5 +157,5 @@ reticulate::py_discover_config()
 # - Requires session restart
 
 
-
+reticulate::py_discover_config()
 

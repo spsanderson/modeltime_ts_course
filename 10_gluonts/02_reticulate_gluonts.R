@@ -45,7 +45,9 @@ py <- import_builtins(convert = FALSE)
 # * Using Python & R Together ----
 py$abs(-5) %>% class()
 py$abs(-5) %>% py_to_r() %>% class()
+r_to_py(5) %>% class()
 
+my_dict <- py$dict("key1" = "value1", "key2" = "value2")
 
 # 3.0 DATA ----
 

@@ -55,11 +55,30 @@ my_dict["key1"] %>% py_to_r() %>% class()
 # 3.0 DATA ----
 
 # * Transactions Data ----
-
+transactions_tbl <- read_rds("00_data/transactions_weekly.rds")
+transactions_tbl %>%
+    plot_time_series(
+        purchased_at,
+        revenue
+    )
 
 
 # 4.0 DATA PROCESSING ----
 
+full_data_tbl <- transactions_tbl %>%
+    mutate(id = "total_revenue") %>%
+    group_by(id) %>%
+    future_frame(
+        .length_out = 12,
+        .bind_data = TRUE
+    ) %>%
+    ungroup()
+
+data_prepared_tbl <- full_data_tbl %>%
+    filter(!is.na(revenue))
+
+future_tbl <- full_data_tbl %>%
+    filter(is.na(revenue))
 
 
 # 5.0 GLUONTS LIST DATASET ----

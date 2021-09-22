@@ -33,13 +33,18 @@ library(timetk)
 
 # Check Environment - Should be 'r-gluonts'
 
-
-# Import Key Packages
-
-
-# Using Python & R Together ----
+py_discover_config()
 
 
+# * Import Key Packages ----
+
+gluonts <- import("gluonts", convert = FALSE)
+py <- import_builtins(convert = FALSE)
+
+
+# * Using Python & R Together ----
+py$abs(-5) %>% class()
+py$abs(-5) %>% py_to_r() %>% class()
 
 
 # 3.0 DATA ----

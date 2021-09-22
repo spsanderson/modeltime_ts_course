@@ -1,0 +1,141 @@
+# BUSINESS SCIENCE UNIVERSITY ----
+# DS4B 203-R: TIME SERIES FORECASTING  ----
+# MODULE: DEEP LEARNING - RETICULATE & GLUONTS ----
+
+# GOAL: Forecast Weekly Revenue (Simple Case: Single Time Series)
+
+# OBJECTIVES ----
+# - Work with GluonTS via Reticulate
+# - Understand the GluonTS List Dataset
+# - Make a GluonTS Probabilistic Forecast via Reticulated Python
+# - Showcase Modeltime GluonTS in R
+
+
+# 1.0 LIBRARIES & SETUP ----
+
+# Time Series ML
+library(tidymodels)
+library(modeltime)
+library(modeltime.gluonts)
+
+# Python 
+library(reticulate)
+
+# Plotting 
+library(plotly)
+
+# Core 
+library(tidyverse)
+library(timetk)
+
+
+# 2.0 PYTHON & RETICULATE ----
+
+# Check Environment - Should be 'r-gluonts'
+
+
+# Import Key Packages
+
+
+# Using Python & R Together ----
+
+
+
+
+# 3.0 DATA ----
+
+# * Transactions Data ----
+
+
+
+# 4.0 DATA PROCESSING ----
+
+
+
+# 5.0 GLUONTS LIST DATASET ----
+
+# * Creating a gluonts ListDataset ----
+
+
+# * Examining a ListDataset ----
+
+
+# * Converting to Pandas ----
+
+
+
+
+# 6.0 DeepAR Estimator ----
+# - Documentation: https://ts.gluon.ai/api/gluonts/gluonts.model.deepar.html
+
+# * Connect to Model & Trainer
+
+
+# * Model Specification 
+
+
+# * Fitting the GluonTS Model
+
+
+
+# 7.0 PREDICTION ----
+
+# * Prediction Object ----
+
+
+
+# * Probabilistic Forecasting  -----
+
+
+
+# 8.0 MATPLOTLIB PROBABILISTIC VISUALIZATION ----
+
+
+
+# 9.0 GGPLOT & PLOTLY PROBABILISTIC FORECAST VISUALIZATION ----
+
+
+
+# 10.0 MODELTIME ----
+
+
+
+# 11.0 SAVING / LOADING MODELS ----
+
+# * GluonTS ----
+
+
+
+
+# * Modeltime ----
+
+
+
+
+
+# 12.0 BONUS - Deep Factor Estimator ----
+
+# * Model Specification 
+
+
+# * Fitting the GluonTS DeepFactor Model ----
+
+
+# * Visualize  ----
+
+
+
+
+# CONCLUSIONS ----
+
+# PROS & CONS:
+# - GLUONTS 
+#   - [PRO] Wide range of algorithms
+#   - [PRO] One round of training and probabilities are incorporated (for some models)
+#   - [CON] More complex to work with ListDataset Structure
+# - MODELTIME 
+#   - [PRO] Simplifies creating ListDataset() objects
+#   - [PRO] Can compare w/ other forecast algorithms (shown next)
+#   - [PRO] Good for scaling up predictions (shown next)
+#   - [CON] Requires 2 rounds of training to get confidence intervals
+#   - [CON] Not all GluonTS Algorithms incorporated (more coming)

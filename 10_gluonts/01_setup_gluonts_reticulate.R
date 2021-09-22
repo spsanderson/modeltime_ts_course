@@ -87,11 +87,13 @@ modeltime_table(model_fit_deepar) %>%
 
 
 # * Which Environments are Available? ----
+library(reticulate)
+conda_list()
 
-
+virtualenv_list()
 
 # * Which Environment am I Using? ----
-
+py_discover_config()
 
 
 # * What's in My Environment? ----
@@ -102,23 +104,49 @@ modeltime_table(model_fit_deepar) %>%
 
 # Py Install
 
+reticulate::py_install(
+    packages = c(
+        "mxnet==1.6",
+        "gluonts==0.6.3",
+        "numpy==1.16.6",
+        "pandas==1.0.5",
+        "scikit-learn==0.23.2",
+        "matplotlib==3.3.2",
+        "seaborn==0.11.0",
+        "pathlib==1.0.1"
+    ),
+    envname = "my_gluonts_env",
+    method = "conda",
+    python_version = "3.6",
+    pip = TRUE
+)
+
 # Find the Environment Python
 
 
 # 5.0 ACTIVATING A CUSTOM PYTHON ENV ----
 
 # * Step 1. Requires a Session Restart ----
-
+reticulate::py_discover_config()
 
 
 # * Step 2. Get the Path to your Python Environment ----
 
+library(tidyverse)
+
+env_path <- reticulate::conda_list() %>%
+    filter(name == "my_gluonts_env") %>%
+    pull(python)
+
 
 # * Step 3. Set an R environment variable ----
-
+Sys.setenv(GLUONTS_PYTHON = env_path)
+Sys.getenv("GLUONTS_PYTHON")
 
 # Step 4. Load Modeltime - It will override the default using the new python environment
 
+library(modeltime.gluonts)
+reticulate::py_discover_config()
 
 # Step 5. Common Gotchas:
 # - If you've already activated an environment or run library(modeltime), you need to restart R

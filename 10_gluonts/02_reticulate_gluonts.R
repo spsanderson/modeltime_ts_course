@@ -48,6 +48,9 @@ py$abs(-5) %>% py_to_r() %>% class()
 r_to_py(5) %>% class()
 
 my_dict <- py$dict("key1" = "value1", "key2" = "value2")
+my_dict %>% class()
+my_dict$key1
+my_dict["key1"] %>% py_to_r() %>% class()
 
 # 3.0 DATA ----
 

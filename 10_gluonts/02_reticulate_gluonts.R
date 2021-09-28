@@ -100,10 +100,15 @@ data_prepared_list_dataset$list_data
 
 data_prepared_list_dataset$list_data %>% py_to_r()
 
+data_prepared_list_dataset$list_data %>% class()
+
+data_prepared_list_dataset$list_data[0]
+
 
 # * Converting to Pandas ----
+to_pandas <- gluonts$dataset$util$to_pandas
 
-
+data_prepared_list_dataset$list_data[0] %>% to_pandas
 
 
 # 6.0 DeepAR Estimator ----

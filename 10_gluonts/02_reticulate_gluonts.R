@@ -139,11 +139,13 @@ DeepAR_fit_1 <- DeepAR_spec_1$train(training_data = data_prepared_list_dataset)
 # 7.0 PREDICTION ----
 
 # * Prediction Object ----
+prediction <- DeepAR_fit_1$predict(dataset = data_prepared_list_dataset)
 
+first_prediction <- reticulate::iter_next(prediction)
 
 
 # * Probabilistic Forecasting  -----
-
+first_prediction$mean %>% py_to_r() %>% as.numeric()
 
 
 # 8.0 MATPLOTLIB PROBABILISTIC VISUALIZATION ----

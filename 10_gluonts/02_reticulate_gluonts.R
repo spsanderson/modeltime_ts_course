@@ -147,6 +147,11 @@ first_prediction <- reticulate::iter_next(prediction)
 # * Probabilistic Forecasting  -----
 first_prediction$mean %>% py_to_r() %>% as.numeric()
 
+first_prediction$median %>% py_to_r() %>% as.numeric()
+
+first_prediction$quantile(0.75)
+first_prediction$quantile(0.25)
+
 
 # 8.0 MATPLOTLIB PROBABILISTIC VISUALIZATION ----
 

@@ -84,9 +84,21 @@ future_tbl <- full_data_tbl %>%
 # 5.0 GLUONTS LIST DATASET ----
 
 # * Creating a gluonts ListDataset ----
+?to_gluon_list_dataset()
+data_prepared_list_dataset <- data_prepared_tbl %>%
+    to_gluon_list_dataset(
+        date_var  = purchased_at,
+        value_var = revenue,
+        id_var    = id
+    )
 
 
 # * Examining a ListDataset ----
+data_prepared_list_dataset %>% class()
+
+data_prepared_list_dataset$list_data
+
+data_prepared_list_dataset$list_data %>% py_to_r()
 
 
 # * Converting to Pandas ----

@@ -119,13 +119,21 @@ data_prepared_list_dataset$list_data[0] %>%
 # - Documentation: https://ts.gluon.ai/api/gluonts/gluonts.model.deepar.html
 
 # * Connect to Model & Trainer
-
+DeepAREstimator <- gluonts$model$deepar$DeepAREstimator
+Trainer         <- gluonts$mx$trainer$Trainer
 
 # * Model Specification 
+DeepAR_spec_1 <- DeepAREstimator(
+    freq = "W",
+    prediction_length = 12,
+    trainer = Trainer(
+        epochs = 5
+    )
+)
 
 
 # * Fitting the GluonTS Model
-
+DeepAR_fit_1 <- DeepAR_spec_1$train(training_data = data_prepared_list_dataset)
 
 
 # 7.0 PREDICTION ----

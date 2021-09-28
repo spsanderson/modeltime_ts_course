@@ -89,7 +89,8 @@ data_prepared_list_dataset <- data_prepared_tbl %>%
     to_gluon_list_dataset(
         date_var  = purchased_at,
         value_var = revenue,
-        id_var    = id
+        id_var    = id,
+        freq      = "W"
     )
 
 
@@ -108,7 +109,10 @@ data_prepared_list_dataset$list_data[0]
 # * Converting to Pandas ----
 to_pandas <- gluonts$dataset$util$to_pandas
 
-data_prepared_list_dataset$list_data[0] %>% to_pandas
+data_prepared_list_dataset$list_data[0] %>% 
+    to_pandas %>% 
+    py_to_r() %>% 
+    as.numeric()
 
 
 # 6.0 DeepAR Estimator ----

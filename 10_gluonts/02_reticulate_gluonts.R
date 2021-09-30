@@ -158,9 +158,13 @@ matplotlib <- import("matplotlib", convert = FALSE)
 plt <- matplotlib$pyplot
 
 plt$style$available %>% py_to_r()
-plt$style$use("fivethirtyeight")
+plt$style$use("seaborn")
 
 to_pandas(data_prepared_list_dataset$list_data[0])$plot()
+first_prediction$plot(
+    prediction_intervals = c(50, 90),
+    color = "g"
+)
 plt$show()
 plt$close()
 

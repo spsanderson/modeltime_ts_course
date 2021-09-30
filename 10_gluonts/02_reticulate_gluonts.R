@@ -221,9 +221,13 @@ modeltime_table(
 # 11.0 SAVING / LOADING MODELS ----
 
 # * GluonTS ----
+fs::dir_create("00_models/deep_ar_1_revenue_weekly")
+pathlib <- import("pathlib", convert = FALSE)
+model_path <- pathlib$Path("00_models/deep_ar_1_revenue_weekly/")
+DeepAR_fit_1$serialize(model_path)
 
-
-
+model_reloaded <- gluonts$model$predictor$Predictor$deserialize(path = model_path)
+model_reloaded$predict(dataset = data_prepared_list_dataset)
 
 # * Modeltime ----
 

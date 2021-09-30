@@ -199,7 +199,7 @@ model_fit_depar_1 <- deep_ar(
     id = "id",
     freq = "W",
     prediction_length = 12,
-    epochs = 5
+    epochs = 25
 ) %>%
     set_engine("gluonts_deepar") %>%
     fit(revenue ~ ., data = data_prepared_tbl)
@@ -212,7 +212,11 @@ modeltime_table(
     model_fit_depar_1,
     model_fit_arima_1
 ) %>%
-    modeltime_forecast()
+    modeltime_forecast(
+        new_data    = future_tbl,
+        actual_data = data_prepared_tbl
+    ) %>%
+    plot_modeltime_forecast()
 
 # 11.0 SAVING / LOADING MODELS ----
 

@@ -230,10 +230,14 @@ model_reloaded <- gluonts$model$predictor$Predictor$deserialize(path = model_pat
 model_reloaded$predict(dataset = data_prepared_list_dataset)
 
 # * Modeltime ----
+modeltime_table(
+    model_fit_depar_1
+)
 
+model_fit_depar_1 %>% 
+    save_gluonts_model("00_models/deep_ar_1_revenue_weekly_mdl/")
 
-
-
+model_reloaded_2 <- load_gluonts_model("00_models/deep_ar_1_revenue_weekly_mdl/")
 
 # 12.0 BONUS - Deep Factor Estimator ----
 

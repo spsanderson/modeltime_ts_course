@@ -158,7 +158,7 @@ matplotlib <- import("matplotlib", convert = FALSE)
 plt <- matplotlib$pyplot
 
 plt$style$available %>% py_to_r()
-plt$style$use("seaborn")
+plt$style$use("ggplot")
 
 to_pandas(data_prepared_list_dataset$list_data[0])$plot()
 first_prediction$plot(
@@ -169,12 +169,50 @@ plt$show()
 plt$close()
 
 # 9.0 GGPLOT & PLOTLY PROBABILISTIC FORECAST VISUALIZATION ----
+future_predictions_deepar_1_tbl <- future_tbl %>%
+    mutate(
+        revenue = first_prediction$mean %>% py_to_r(),
+        type = "prediction",
+        ci_lo  = first_prediction$quantile(0.25) %>% py_to_r() %>% as.numeric(),
+        ci_lo2 = first_prediction$quantile(0.05) %>% py_to_r() %>% as.numeric(),
+        ci_hi  = first_prediction$quantile(0.75) %>% py_to_r() %>% as.numeric(),
+        ci_hi2 = first_prediction$quantile(0.95) %>% py_to_r() %>% as.numeric()
+    )
 
+g <- data_prepared_tbl %>%
+    mutate(type = "actual") %>%
+    bind_rows(future_predictions_deepar_1_tbl) %>%
+    plot_time_series(
+        .date_var  = purchased_at,
+        .value     = revenue,
+        .color_var = type,
+        .smooth    = FALSE,
+        .interactive = FALSE
+    ) +
+    geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), alpha = 0.2, fill = "gray50") +
+    geom_ribbon(aes(ymin = ci_lo2, ymax = ci_hi2), alpha = 0.1, fill = "gray50")
 
+plotly::ggplotly(g)
 
 # 10.0 MODELTIME ----
+model_fit_depar_1 <- deep_ar(
+    id = "id",
+    freq = "W",
+    prediction_length = 12,
+    epochs = 5
+) %>%
+    set_engine("gluonts_deepar") %>%
+    fit(revenue ~ ., data = data_prepared_tbl)
 
+model_fit_arima_1 <- arima_reg(seasonal_period = 4) %>%
+    set_engine("auto_arima") %>%
+    fit(revenue ~ purchased_at, data = data_prepared_tbl)
 
+modeltime_table(
+    model_fit_depar_1,
+    model_fit_arima_1
+) %>%
+    modeltime_forecast()
 
 # 11.0 SAVING / LOADING MODELS ----
 

@@ -154,8 +154,15 @@ first_prediction$quantile(0.25)
 
 
 # 8.0 MATPLOTLIB PROBABILISTIC VISUALIZATION ----
+matplotlib <- import("matplotlib", convert = FALSE)
+plt <- matplotlib$pyplot
 
+plt$style$available %>% py_to_r()
+plt$style$use("fivethirtyeight")
 
+to_pandas(data_prepared_list_dataset$list_data[0])$plot()
+plt$show()
+plt$close()
 
 # 9.0 GGPLOT & PLOTLY PROBABILISTIC FORECAST VISUALIZATION ----
 

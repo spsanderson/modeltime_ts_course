@@ -27,17 +27,74 @@ library(timetk)
 library(skimr)
 library(fs)
 
+reticulate::py_discover_config()
 
 # 1.0 DATA ----
 
 # * GA Data ----
+ga_page_raw_tbl <- read_rds("00_data/google_analytics_by_page_daily.rds")
+
+ga_page_raw_tbl %>%
+    group_by(pagePath) %>%
+    plot_time_series(
+        .date_var = date,
+        .value = pageViews,
+        .facet_ncol = 4
+    )
 
 
 # * Full Data ----
+# set up fro ML and DL
+FORECAST_HORIZON <- 28
 
-
+full_data_tbl <- ga_page_raw_tbl %>%
+    
+    # Fix data issues
+    select(date:pageViews) %>%
+    group_by(pagePath) %>%
+    pad_by_time(
+        .date_var  = date,
+        .by        = "day",
+        .pad_value = 0
+    ) %>%
+    ungroup() %>%
+    
+    # Transform Target
+    mutate(pageViews = log1p(pageViews)) %>%
+    
+    # Groupwise Data manipulation forecast horizon
+    group_by(pagePath) %>%
+    future_frame(
+        .date_var   = date,
+        .length_out = FORECAST_HORIZON,
+        .bind_data  = TRUE
+    ) %>%
+    
+    # Add features
+    tk_augment_fourier(
+        .date_var = date,
+        .periods  = c(0.5 * FORECAST_HORIZON, FORECAST_HORIZON),
+        .K = 1
+    ) %>%
+    
+    # Lags and Rolling Lag features
+    tk_augment_lags(
+        .value = pageViews,
+        .lags  = FORECAST_HORIZON
+    ) %>%
+    tk_augment_slidify(
+        .value   = contains("pageViews_lag"),
+        .f       = ~ mean(.x, na.rm = TRUE),
+        .period  = c(7, FORECAST_HORIZON, 2*FORECAST_HORIZON),
+        .partial = TRUE,
+        .align   = "center"
+    ) %>%
+    ungroup() %>%
+    rowid_to_column(var = "rowid")
+    
 
 # * Data Prepared ----
+
 
 
 

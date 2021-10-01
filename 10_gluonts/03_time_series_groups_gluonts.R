@@ -110,7 +110,35 @@ future_tbl %>% skim()
 
 
 # 2.0 TIME SPLIT ----
+splits <- data_prepared_tbl %>%
+    time_series_split(
+        date_var  = date,
+        assess    = FORECAST_HORIZON,
+        cumulative = TRUE
+    )
 
+splits %>%
+    tk_time_series_cv_plan() %>%
+    plot_time_series_cv_plan(
+        .date_var = date,
+        .value = pageViews
+    )
+
+training(splits) %>%
+    group_by(pagePath) %>%
+    plot_time_series(
+        .date_var = date,
+        .value = pageViews,
+        .facet_ncol = 4
+    )
+
+testing(splits) %>%
+    group_by(pagePath) %>%
+    plot_time_series(
+        .date_var = date,
+        .value = pageViews,
+        .facet_ncol = 4
+    )
 
 
 

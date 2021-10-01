@@ -94,12 +94,19 @@ full_data_tbl <- ga_page_raw_tbl %>%
     
 
 # * Data Prepared ----
+data_prepared_tbl <- full_data_tbl %>%
+    filter(!is.na(pageViews)) %>%
+    drop_na()
 
-
-
+data_prepared_tbl %>%
+    skim()
 
 # * Future Data ----
+future_tbl <- full_data_tbl %>%
+    filter(is.na(pageViews)) %>%
+    drop_na(pageViews_lag28)
 
+future_tbl %>% skim()
 
 
 # 2.0 TIME SPLIT ----

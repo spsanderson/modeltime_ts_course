@@ -145,13 +145,21 @@ testing(splits) %>%
 # 3.0 GLUONTS MODELS ----
 
 # * GLUON Recipe Specification ----
-
+recipe_spec_gluon <- recipe(
+    pageViews ~ pagePath + date + rowid,
+    data = training(splits)
+) %>%
+    update_role(rowid, new_role = "indicator")
 
 
 # * DeepAR Estimator ----
 
 # Model 1: Default GluonTS
-
+deep_ar(
+    id = "pagePath",
+    freq = "D",
+    prediction_length = FORECAST_HORIZON
+)
 
 
 # Model 2: Increase Epochs, Adjust Num Batches per Epoch

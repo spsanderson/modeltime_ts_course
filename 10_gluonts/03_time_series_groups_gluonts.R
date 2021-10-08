@@ -155,13 +155,26 @@ recipe_spec_gluon <- recipe(
 # * DeepAR Estimator ----
 
 # Model 1: Default GluonTS
-deep_ar(
+model_spec_1 <- deep_ar(
     id = "pagePath",
     freq = "D",
-    prediction_length = FORECAST_HORIZON
-)
+    prediction_length = FORECAST_HORIZON,
+    
+    # Training params
+    epochs = 5,
+    
+    # Deep AR params
+    cell_type = "lstm"
+) %>%
+    set_engine("gluonts_deepar")
 
+wflw_fit_deepar_1 <- workflow() %>%
+    add_model(model_spec_1) %>%
+    add_recipe(recipe_spec_gluon) %>%
+    fit(training(splits))
 
+wflw_fit_deepar_1
+    
 # Model 2: Increase Epochs, Adjust Num Batches per Epoch
 
 
@@ -174,14 +187,38 @@ deep_ar(
 
 # ** Modeltime Comparison ----
 
-# Forecast Accuracy
+model_tbl_submodels <- modeltime_table(
+    wflw_fit_deepar_1
+)
 
+# Forecast Accuracy
+model_tbl_submodels %>%
+    modeltime_accuracy(testing(splits))
 
 
 # Forecast Visualization
+forecast_submodels_test_tbl <- model_tbl_submodels %>%
+    modeltime_forecast(
+        new_data      = testing(splits)
+        , actual_data = data_prepared_tbl
+        , keep_data   = TRUE 
+    ) 
+
+forecast_submodels_test_tbl %>%
+    group_by(pagePath) %>%
+    plot_modeltime_forecast(
+        .facet_ncol = 4
+    )
 
 
 # Investigate Model Failures
+forecast_submodels_test_tbl %>%
+    skim()
+
+forecast_submodels_test_tbl %>%
+    filter(is.na(.value)) %>%
+    select(.model_id, .model_desc, .index, pagePath) %>%
+    distinct(pagePath)
 
 
 # Forecast Future

@@ -176,10 +176,39 @@ wflw_fit_deepar_1 <- workflow() %>%
 wflw_fit_deepar_1
     
 # Model 2: Increase Epochs, Adjust Num Batches per Epoch
+batch_num = round(sqrt(nrow(testing(splits))), 0)
+model_spec_2 <- deep_ar(
+    id = "pagePath",
+    freq = "D",
+    prediction_length = FORECAST_HORIZON,
+    
+    epochs = 10,
+    num_batches_per_epoch = batch_num
+) %>%
+    set_engine("gluonts_deepar")
 
+wflw_fit_deepar_2 <-  workflow() %>%
+    add_recipe(recipe_spec_gluon) %>%
+    add_model(model_spec_2) %>%
+    fit(training(splits))
 
 
 # Model 3: Increase Epochs, Adjust Num Batches Per Epoch, & Add Scaling 
+model_spec_3 <- deep_ar(
+    id = "pagePath",
+    freq = "D",
+    prediction_length = FORECAST_HORIZON,
+    
+    epochs = 10,
+    num_batches_per_epoch = batch_num,
+    scale = TRUE
+) %>%
+    set_engine("gluonts_deepar")
+
+wflw_fit_deepar_3 <-  workflow() %>%
+    add_recipe(recipe_spec_gluon) %>%
+    add_model(model_spec_3) %>%
+    fit(training(splits))
 
 
 # * N-BEATS Estimator ----
@@ -188,7 +217,9 @@ wflw_fit_deepar_1
 # ** Modeltime Comparison ----
 
 model_tbl_submodels <- modeltime_table(
-    wflw_fit_deepar_1
+    wflw_fit_deepar_1,
+    wflw_fit_deepar_2,
+    wflw_fit_deepar_3
 )
 
 # Forecast Accuracy

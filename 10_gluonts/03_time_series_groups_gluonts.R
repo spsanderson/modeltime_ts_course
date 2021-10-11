@@ -385,15 +385,38 @@ tune_results_xgboost <- tune_grid(
     )
 )
 
+best_results <- tune_results_xgboost %>%
+    show_best(metric = "rmse", n = 10)
+
+wflw_fit_xgboost <- wflw_spec_xgboost_tune %>%
+    finalize_workflow(
+        parameters = best_results %>% slice(1)
+    ) %>%
+    fit(training(splits))
 
 # * End Parallel Processing ----
 
+parallel_stop()
 
 
 
 # 5.0 EVALUATION ----
 
 # * Test Evaluations ----
+page_paths_train <- training(splits) %>% 
+    distinct(pagePath) %>%
+    pull(pagePath)
+
+submodels_tbl <- submodel_inspection_tbl %>%
+    update_model_description(1, "DEEPAR - Unscaled") %>%
+    update_model_description(2, "DEEPAR - Scaled") %>%
+    add_modeltime_model(wflw_fit_xgboost)
+
+submodels_tbl %>%
+    modeltime_accuracy(
+        testing(splits) %>%
+            filter(pagePath %in% page_paths_train)
+    )
 
 
 # * Future Evaluations ----

@@ -432,6 +432,20 @@ submodels_tbl %>%
 
 # * Future Evaluations ----
 
+submodels_refitted_tbl <- submodels_tbl %>%
+    modeltime_refit(data_prepared_tbl)
+
+submodels_refitted_tbl %>%
+    modeltime_forecast(
+        new_data = future_tbl
+        , actual_data = data_prepared_tbl
+        , keep_data = TRUE
+    ) %>% 
+    group_by(pagePath) %>%
+    plot_modeltime_forecast(
+        .facet_ncol = 4
+    )
+
 
 
 # 6.0 ENSEMBLE ----

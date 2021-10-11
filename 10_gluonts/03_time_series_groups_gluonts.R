@@ -418,6 +418,17 @@ submodels_tbl %>%
             filter(pagePath %in% page_paths_train)
     )
 
+submodels_tbl %>%
+    modeltime_forecast(
+        new_data = testing(splits)
+        , actual_data = data_prepared_tbl
+        , keep_data = TRUE
+    ) %>%
+    group_by(pagePath) %>%
+    plot_modeltime_forecast(
+        .facet_ncol = 4
+    )
+
 
 # * Future Evaluations ----
 

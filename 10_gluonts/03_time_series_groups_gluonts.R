@@ -212,14 +212,62 @@ wflw_fit_deepar_3 <-  workflow() %>%
 
 
 # * N-BEATS Estimator ----
+# N-BEATS Default
+model_spec_nbeats_4 <- nbeats(
+    id = "pagePath"
+    , freq = "D"
+    , prediction_length = FORECAST_HORIZON
+    , lookback_length = 2 * FORECAST_HORIZON
+) %>%
+    set_engine("gluonts_nbeats")
 
+wflw_fit_nbeats <- workflow() %>%
+    add_recipe(recipe_spec_gluon) %>%
+    add_model(model_spec_nbeats_4) %>%
+    fit(training(splits))
+
+model_spec_nbeats_5 <- nbeats(
+    id = "pagePath"
+    , freq = "D"
+    , prediction_length = FORECAST_HORIZON
+    , lookback_length = 2 * FORECAST_HORIZON
+    , loss_function = "MASE"
+    , epochs = 2
+) %>%
+    set_engine("gluonts_nbeats")
+
+wflw_fit_nbeats_2 <- workflow() %>%
+    add_recipe(recipe_spec_gluon) %>%
+    add_model(model_spec_nbeats_5) %>%
+    fit(training(splits))
+
+model_spec_nbeats_6 <- nbeats(
+    id = "pagePath"
+    , freq = "D"
+    , prediction_length = FORECAST_HORIZON
+    , lookback_length = c(FORECAST_HORIZON, 2 * FORECAST_HORIZON)
+    , loss_function = "MASE"
+    , epochs = 2
+    , bagging_size = 1
+    , num_batches_per_epoch = 35
+) %>%
+    set_engine("gluonts_nbeats_ensemble")
+
+wflw_fit_nbeats_3 <- workflow() %>%
+    add_recipe(recipe_spec_gluon) %>%
+    add_model(model_spec_nbeats_6) %>%
+    fit(training(splits))
 
 # ** Modeltime Comparison ----
+
 
 model_tbl_submodels <- modeltime_table(
     wflw_fit_deepar_1,
     wflw_fit_deepar_2,
-    wflw_fit_deepar_3
+    wflw_fit_deepar_3,
+    wflw_fit_nbeats,
+    wflw_fit_nbeats_2,
+    wflw_fit_nbeats_3
 )
 
 # Forecast Accuracy
@@ -253,6 +301,15 @@ forecast_submodels_test_tbl %>%
 
 
 # Forecast Future
+
+submodel_inspection_tbl <- modeltime_table(
+    wflw_fit_deepar_2,
+    wflw_fit_deepar_3
+)
+
+deepar_submodel_refitted_tbl <- submodel_inspection_tbl %>%
+    modeltime_refit(data_prepared_tbl)
+
 
 
 

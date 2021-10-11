@@ -310,7 +310,16 @@ submodel_inspection_tbl <- modeltime_table(
 deepar_submodel_refitted_tbl <- submodel_inspection_tbl %>%
     modeltime_refit(data_prepared_tbl)
 
-
+deepar_submodel_refitted_tbl %>%
+    modeltime_forecast(
+        new_data = future_tbl
+        , actual_data = data_prepared_tbl
+        , keep_data = TRUE
+    ) %>%
+    group_by(pagePath) %>%
+    plot_modeltime_forecast(
+        .facet_ncol = 4
+    )
 
 
 

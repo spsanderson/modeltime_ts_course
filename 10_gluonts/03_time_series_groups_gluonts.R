@@ -447,8 +447,18 @@ submodels_refitted_tbl %>%
 
 # * Make Ensemble ----
 
+model_tbl_ensemble <- submodels_tbl %>%
+    ensemble_weighted(
+        loadings = c(1,2,7)
+    ) %>%
+    modeltime_table()
+
 
 # * Evaluate Ensemble Test ----
+model_tbl_ensemble %>%
+    combine_modeltime_tables(submodels_tbl) %>%
+    modeltime_accuracy(testing(splits)) %>%
+    arrange(rmse)
 
 
 # * Refit Ensemble & Evaluate Future ----

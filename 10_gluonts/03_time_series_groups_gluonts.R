@@ -463,19 +463,61 @@ model_tbl_ensemble %>%
 
 # * Refit Ensemble & Evaluate Future ----
 
+model_tbl_ensemble_refit <- model_tbl_ensemble %>%
+    modeltime_refit(data_prepared_tbl)
+
+model_tbl_ensemble_refit %>%
+    modeltime_forecast(
+        new_data      = future_tbl
+        , actual_data = data_prepared_tbl
+        , keep_data   = TRUE
+    ) %>%
+    mutate(.value = expm1(.value)) %>%
+    group_by(pagePath) %>%
+    plot_modeltime_forecast(
+        .facet_ncol = 4
+    )
+
 
 # 7.0 SAVING & LOADING ----
 
 
 # * Save Submodels ----
+fs::dir_create("00_models/final_google_analytics_daily")
+model_tbl_ensemble_refit$.model[[1]]$model_tbl$.model[[1]] %>%
+    save_gluonts_model(path = "00_models/final_google_analytics_daily/deepar_unscaled")
+model_tbl_ensemble_refit$.model[[1]]$model_tbl$.model[[2]] %>%
+    save_gluonts_model(path = "00_models/final_google_analytics_daily/deepar_scaled")
+model_tbl_ensemble_refit$.model[[1]]$model_tbl$.model[[3]] %>%
+    write_rds("00_models/final_google_analytics_daily/xgboost.rds")
 
 
 # * Load Submodels ----
 
+model_deepar_unscaled <- load_gluonts_model("00_models/final_google_analytics_daily/deepar_unscaled/")
+model_deepar_scaled   <- load_gluonts_model("00_models/final_google_analytics_daily/deepar_scaled/")
+model_xgboost         <- readRDS("00_models/final_google_analytics_daily/xgboost.rds")
 
 # * Make ensemble ----
+ensemble_reloaded <- modeltime_table(
+    model_deepar_scaled,
+    model_deepar_unscaled,
+    model_xgboost
+) %>%
+    ensemble_weighted(loadings = c(1,2,7)) %>%
+    modeltime_table()
 
-
+ensemble_reloaded %>%
+    modeltime_forecast(
+        new_data = future_tbl
+        , actual_data = data_prepared_tbl
+        , keep_data = TRUE
+    ) %>%
+    mutate(.value = expm1(.value)) %>%
+    group_by(pagePath) %>%
+    plot_modeltime_forecast(
+        .facet_ncol = 4
+    )
 
 # CONCLUSIONS ----
 
